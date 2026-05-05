@@ -354,7 +354,7 @@ export function getDefaultSampleData() {
   };
 }
 
-export function resolveStudentCertificateDescription(student = {}, savedDefaultText = '') {
+export function resolveStudentCertificateDescription(student = {}, savedDefaultText = '', courseName = '') {
   const customDescriptionKeys = [
     'certificate_description',
     'cert_description',
@@ -367,15 +367,15 @@ export function resolveStudentCertificateDescription(student = {}, savedDefaultT
   for (const key of customDescriptionKeys) {
     const value = student?.[key];
     if (typeof value === 'string' && value.trim()) {
-      return resolveCoursePlaceholder(value.trim(), student?.course || '');
+      return resolveCoursePlaceholder(value.trim(), courseName || student?.course || '');
     }
   }
 
   if (typeof savedDefaultText === 'string' && savedDefaultText.trim()) {
-    return resolveCoursePlaceholder(savedDefaultText.trim(), student?.course || '');
+    return resolveCoursePlaceholder(savedDefaultText.trim(), courseName || student?.course || '');
   }
 
-  return getCertificateDescription(student?.course || '');
+  return getCertificateDescription(courseName || student?.course || '');
 }
 
 export function buildCertificatePreviewData({
@@ -392,12 +392,12 @@ export function buildCertificatePreviewData({
   };
 }
 
-export function buildStudentCertificatePreviewData(student = {}, savedDefaultText = '') {
+export function buildStudentCertificatePreviewData(student = {}, savedDefaultText = '', courseName = '') {
   return buildCertificatePreviewData({
     recipientName: student.full_name || student.name || '',
-    course: student.course || '',
+    course: courseName || student.course || '',
     token: student.cert_token || '',
-    descriptionText: resolveStudentCertificateDescription(student, savedDefaultText),
+    descriptionText: resolveStudentCertificateDescription(student, savedDefaultText, courseName),
   });
 }
 
@@ -414,6 +414,77 @@ export async function fetchCourseOptions() {
       .map((row) => `${row.course || ''}`.trim())
       .filter(Boolean),
   )].sort((left, right) => left.localeCompare(right));
+}
+
+export async function fetchCourseRecord(courseId) {
+  if (!courseId) return null;
+
+  const { data, error } = await supabase
+    .from('courses')
+    .select('id, course_name, facilitator_name, facilitator_title')
+    .eq('id', courseId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data || null;
+}
+
+export async function fetchCourseFacilitators(courseId) {
+  if (!courseId) return [];
+
+  const { data, error } = await supabase
+    .from('course_facilitators')
+    .select('id, facilitator_name, facilitator_title, sort_order')
+    .eq('course_id', courseId)
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: true });
+
+  if (error) throw error;
+  return data || [];
+}
+
+export function buildStudentCourseContext(student = {}, courseRecord = null, facilitators = []) {
+  const normalizedFacilitators = facilitators
+    .filter((facilitator) => facilitator?.facilitator_name)
+    .map((facilitator) => ({
+      id: facilitator.id || null,
+      name: facilitator.facilitator_name,
+      title: facilitator.facilitator_title || '',
+      sortOrder: facilitator.sort_order ?? 0,
+    }));
+
+  const primaryFacilitator = normalizedFacilitators[0] || null;
+
+  return {
+    courseId: student.course_id || courseRecord?.id || null,
+    courseName: student.course_name_snapshot || courseRecord?.course_name || student.course || '',
+    facilitatorName: student.facilitator_name_snapshot || primaryFacilitator?.name || courseRecord?.facilitator_name || '',
+    facilitatorTitle: student.facilitator_title_snapshot || primaryFacilitator?.title || courseRecord?.facilitator_title || '',
+    facilitators: normalizedFacilitators.length > 0
+      ? normalizedFacilitators
+      : (student.facilitator_name_snapshot
+          ? [{
+              id: null,
+              name: student.facilitator_name_snapshot,
+              title: student.facilitator_title_snapshot || '',
+              sortOrder: 0,
+            }]
+          : (courseRecord?.facilitator_name
+              ? [{
+                  id: null,
+                  name: courseRecord.facilitator_name,
+                  title: courseRecord.facilitator_title || '',
+                  sortOrder: 0,
+                }]
+              : [])),
+    source: student.course_name_snapshot ? 'snapshot' : courseRecord ? 'course' : 'student',
+  };
+}
+
+export async function resolveStudentCourseContext(student = {}) {
+  const courseRecord = student.course_id ? await fetchCourseRecord(student.course_id) : null;
+  const facilitators = student.course_id ? await fetchCourseFacilitators(student.course_id) : [];
+  return buildStudentCourseContext(student, courseRecord, facilitators);
 }
 
 export async function loadCertificateRenderBundle(previewData) {
@@ -437,16 +508,18 @@ export async function loadStudentCertificateRenderBundle(student) {
     fetchCertificateTemplateSettings(),
   ]);
 
+  const courseContext = await resolveStudentCourseContext(student);
   const defaultTextUsed = layout?.description_text?.default_text || '';
   const previewData = buildStudentCertificatePreviewData(
     student,
     defaultTextUsed,
+    courseContext.courseName,
   );
 
   console.info('[certificate-generation]', {
     studentId: student?.id || null,
     fullName: student?.full_name || student?.name || '',
-    course: student?.course || '',
+    course: courseContext.courseName,
     defaultTextUsed,
     finalDescriptionRendered: previewData.descriptionText,
   });
@@ -458,12 +531,14 @@ export async function loadStudentCertificateRenderBundle(student) {
     layoutSource: source,
     layoutWarning: warning,
     student,
+    courseContext,
     debug: {
       layoutSettings: layout,
       recipientNameSettings: layout.recipient_name,
       descriptionTextSettings: layout.description_text,
       qrCodeSettings: layout.qr_code,
       studentCertificateData: student,
+      courseContext,
       previewData,
       layoutSource: source,
       layoutWarning: warning,

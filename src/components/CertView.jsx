@@ -11,6 +11,17 @@ function round(value, decimals = 2) {
   return Math.round(Number(value || 0) * factor) / factor;
 }
 
+function formatIssuedDate(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+}
+
 export default function CertView({ student, dataUrl, blob, isPublic, renderBundle }) {
   const [copied, setCopied] = useState(false);
   const [qrPreviewUrl, setQrPreviewUrl] = useState('');
@@ -22,6 +33,20 @@ export default function CertView({ student, dataUrl, blob, isPublic, renderBundl
     : APP_URL;
 
   const publicLink = `${appUrl}/verify/${student.cert_token}`;
+  const verificationDetails = renderBundle?.courseContext || {
+    courseName: student.course_name_snapshot || student.course || '',
+    facilitatorName: student.facilitator_name_snapshot || '',
+    facilitatorTitle: student.facilitator_title_snapshot || '',
+    facilitators: student.facilitator_name_snapshot
+      ? [{
+          name: student.facilitator_name_snapshot,
+          title: student.facilitator_title_snapshot || '',
+        }]
+      : [],
+  };
+  const facilitatorDisplay = verificationDetails.facilitatorName
+    ? `${verificationDetails.facilitatorName}${verificationDetails.facilitatorTitle ? `, ${verificationDetails.facilitatorTitle}` : ''}`
+    : '';
 
   useEffect(() => {
     let cancelled = false;
@@ -143,6 +168,44 @@ export default function CertView({ student, dataUrl, blob, isPublic, renderBundl
             ))}
           </div>
         </details>
+      )}
+
+      {isPublic && (
+        <section className="cert-verify-card">
+          <h2 className="cert-verify-title">Certificate Verification</h2>
+          <div className="cert-verify-grid">
+            <div className="cert-verify-row">
+              <span>Recipient Name</span>
+              <strong>{student.full_name}</strong>
+            </div>
+            <div className="cert-verify-row">
+              <span>Course/Track</span>
+              <strong>{verificationDetails.courseName || student.course || 'Not provided'}</strong>
+            </div>
+            {facilitatorDisplay && (
+              <div className="cert-verify-row">
+                <span>Facilitator</span>
+                <strong>{facilitatorDisplay}</strong>
+              </div>
+            )}
+            <div className="cert-verify-row">
+              <span>Program</span>
+              <strong>100-Day Tech Challenge</strong>
+            </div>
+            <div className="cert-verify-row">
+              <span>Issued Date</span>
+              <strong>{formatIssuedDate(student.cert_generated_at) || 'Not issued yet'}</strong>
+            </div>
+            <div className="cert-verify-row">
+              <span>Certificate ID</span>
+              <strong>{student.cert_token}</strong>
+            </div>
+            <div className="cert-verify-row">
+              <span>Status</span>
+              <strong>Valid</strong>
+            </div>
+          </div>
+        </section>
       )}
 
       <div className="cert-actions">

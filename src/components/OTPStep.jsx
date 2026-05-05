@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import supabase from '../supabase';
 import { generateCertificateBlob, markCertificateVerifiedInBrowser } from '../utils/cert';
+import { resolveStudentCourseContext } from '../utils/certificateDesigner';
 import { generateOTP, sendOTPEmail } from '../utils/otp';
 
 const RESEND_SECONDS = 60;
@@ -61,11 +62,15 @@ export default function OTPStep({ email, name, onSuccess, onBack, emailFailed, e
       const student = students[0];
 
       const certGeneratedAt = new Date().toISOString();
+      const courseContext = await resolveStudentCourseContext(student);
       const verifiedUpdate = {
         cert_generated_at: student.cert_generated_at || certGeneratedAt,
         otp_verified: true,
         otp_verified_at: certGeneratedAt,
         otp_verified_by_email: email,
+        course_name_snapshot: courseContext.courseName || student.course_name_snapshot || student.course || '',
+        facilitator_name_snapshot: courseContext.facilitatorName || student.facilitator_name_snapshot || '',
+        facilitator_title_snapshot: courseContext.facilitatorTitle || student.facilitator_title_snapshot || '',
       };
 
       await supabase
