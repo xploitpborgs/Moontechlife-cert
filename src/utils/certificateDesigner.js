@@ -314,6 +314,18 @@ function isMissingDefaultTextColumnError(error) {
   return code === '42703' || message.includes('default_text');
 }
 
+function isMissingColumnError(error, columnName) {
+  const code = `${error?.code || ''}`.toLowerCase();
+  const message = `${error?.message || ''}`.toLowerCase();
+  return code === '42703' || message.includes(`${columnName}`.toLowerCase());
+}
+
+function isMissingTableError(error, tableName) {
+  const code = `${error?.code || ''}`.toLowerCase();
+  const message = `${error?.message || ''}`.toLowerCase();
+  return code === '42p01' || code === 'pgrst205' || message.includes(`${tableName}`.toLowerCase());
+}
+
 export function getRuntimeAppUrl() {
   if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
     return window.location.origin;
@@ -419,11 +431,19 @@ export async function fetchCourseOptions() {
 export async function fetchCourseRecord(courseId) {
   if (!courseId) return null;
 
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from('courses')
-    .select('id, course_name, facilitator_name, facilitator_title')
+    .select('id, course_name, facilitator_name, facilitator_names, facilitator_title')
     .eq('id', courseId)
     .maybeSingle();
+
+  if (error && isMissingColumnError(error, 'facilitator_names')) {
+    ({ data, error } = await supabase
+      .from('courses')
+      .select('id, course_name, facilitator_name, facilitator_title')
+      .eq('id', courseId)
+      .maybeSingle());
+  }
 
   if (error) throw error;
   return data || null;
@@ -439,11 +459,26 @@ export async function fetchCourseFacilitators(courseId) {
     .order('sort_order', { ascending: true })
     .order('created_at', { ascending: true });
 
+  if (error && isMissingTableError(error, 'course_facilitators')) {
+    return [];
+  }
+
   if (error) throw error;
   return data || [];
 }
 
 export function buildStudentCourseContext(student = {}, courseRecord = null, facilitators = []) {
+  const facilitatorArrayFromCourse = Array.isArray(courseRecord?.facilitator_names)
+    ? courseRecord.facilitator_names
+        .map((name, index) => ({
+          id: null,
+          name: `${name || ''}`.trim(),
+          title: '',
+          sortOrder: index,
+        }))
+        .filter((facilitator) => facilitator.name)
+    : [];
+
   const normalizedFacilitators = facilitators
     .filter((facilitator) => facilitator?.facilitator_name)
     .map((facilitator) => ({
@@ -453,15 +488,19 @@ export function buildStudentCourseContext(student = {}, courseRecord = null, fac
       sortOrder: facilitator.sort_order ?? 0,
     }));
 
-  const primaryFacilitator = normalizedFacilitators[0] || null;
+  const effectiveFacilitators = normalizedFacilitators.length > 0
+    ? normalizedFacilitators
+    : facilitatorArrayFromCourse;
+
+  const primaryFacilitator = effectiveFacilitators[0] || null;
 
   return {
     courseId: student.course_id || courseRecord?.id || null,
     courseName: student.course_name_snapshot || courseRecord?.course_name || student.course || '',
     facilitatorName: student.facilitator_name_snapshot || primaryFacilitator?.name || courseRecord?.facilitator_name || '',
     facilitatorTitle: student.facilitator_title_snapshot || primaryFacilitator?.title || courseRecord?.facilitator_title || '',
-    facilitators: normalizedFacilitators.length > 0
-      ? normalizedFacilitators
+    facilitators: effectiveFacilitators.length > 0
+      ? effectiveFacilitators
       : (student.facilitator_name_snapshot
           ? [{
               id: null,

@@ -44,9 +44,6 @@ export default function CertView({ student, dataUrl, blob, isPublic, renderBundl
         }]
       : [],
   };
-  const facilitatorDisplay = verificationDetails.facilitatorName
-    ? `${verificationDetails.facilitatorName}${verificationDetails.facilitatorTitle ? `, ${verificationDetails.facilitatorTitle}` : ''}`
-    : '';
 
   useEffect(() => {
     let cancelled = false;
@@ -182,10 +179,17 @@ export default function CertView({ student, dataUrl, blob, isPublic, renderBundl
               <span>Course/Track</span>
               <strong>{verificationDetails.courseName || student.course || 'Not provided'}</strong>
             </div>
-            {facilitatorDisplay && (
+            {verificationDetails.facilitators?.length > 0 && (
               <div className="cert-verify-row">
-                <span>Facilitator</span>
-                <strong>{facilitatorDisplay}</strong>
+                <span>Facilitator{verificationDetails.facilitators.length > 1 ? 's' : ''}</span>
+                <strong className="cert-verify-multi">
+                  {verificationDetails.facilitators.map((facilitator) => (
+                    <span key={`${facilitator.name}-${facilitator.title || ''}`}>
+                      {facilitator.name}
+                      {facilitator.title ? `, ${facilitator.title}` : ''}
+                    </span>
+                  ))}
+                </strong>
               </div>
             )}
             <div className="cert-verify-row">

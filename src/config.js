@@ -1,18 +1,18 @@
+const env = import.meta.env;
+
 // Supabase
-export const SUPABASE_URL = 'https://egmabtxeftcznyrhfxly.supabase.co';
-export const SUPABASE_ANON_KEY =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVnbWFidHhlZnRjem55cmhmeGx5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4NDY2NTcsImV4cCI6MjA5MzQyMjY1N30.qL7-U9hve6GPzGhOf7cd2K7DskI593dg2CWhj43SySY';
+export const SUPABASE_URL = env.VITE_SUPABASE_URL || '';
+export const SUPABASE_ANON_KEY = env.VITE_SUPABASE_ANON_KEY || '';
 
 // EmailJS
-export const EMAILJS_SERVICE_ID = 'service_oqziof9';
-export const EMAILJS_TEMPLATE_ID = 'template_kfys6mp';
-export const EMAILJS_PUBLIC_KEY = '9TEo3EhtKYP15edDO';
+export const EMAILJS_SERVICE_ID = env.VITE_EMAILJS_SERVICE_ID || '';
+export const EMAILJS_TEMPLATE_ID = env.VITE_EMAILJS_TEMPLATE_ID || '';
+export const EMAILJS_PUBLIC_KEY = env.VITE_EMAILJS_PUBLIC_KEY || '';
 
 // Certificate template
-export const CERT_TEMPLATE_BUCKET = 'templates';
-export const CERT_TEMPLATE_OBJECT_PATH = 'Copy of CERTIFICATE OF COMPLETION (2).png';
-export const CERT_TEMPLATE_FALLBACK_URL =
-  'https://egmabtxeftcznyrhfxly.supabase.co/storage/v1/object/public/templates/Copy%20of%20CERTIFICATE%20OF%20COMPLETION%20(2).png';
+export const CERT_TEMPLATE_BUCKET = env.VITE_CERT_TEMPLATE_BUCKET || '';
+export const CERT_TEMPLATE_OBJECT_PATH = env.VITE_CERT_TEMPLATE_OBJECT_PATH || '';
+export const CERT_TEMPLATE_FALLBACK_URL = env.VITE_CERT_TEMPLATE_FALLBACK_URL || '';
 
 export const CERT_TEMPLATE_DEFAULT_LAYOUT_RATIOS = {
   recipient_name: {
@@ -40,4 +40,4 @@ export const CERT_TEMPLATE_DEFAULT_LAYOUT_RATIOS = {
 };
 
 // Public app URL
-export const APP_URL = 'https://certs.moontechlife.com';
+export const APP_URL = env.VITE_APP_URL || '';

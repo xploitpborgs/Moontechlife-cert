@@ -2,6 +2,8 @@ import {
   buildCertificatePreviewData,
   loadCertificateRenderBundle,
   loadStudentCertificateRenderBundle,
+  ORIGINAL_CERTIFICATE_HEIGHT,
+  ORIGINAL_CERTIFICATE_WIDTH,
   renderCertificateArtifact,
 } from './certificateDesigner';
 
@@ -49,6 +51,8 @@ export async function generateCertificateBlob(studentOrName, course, token, desc
     layout: renderBundle.layout,
     templateUrl: renderBundle.templateUrl,
     sampleData: renderBundle.previewData,
+    width: ORIGINAL_CERTIFICATE_WIDTH,
+    height: ORIGINAL_CERTIFICATE_HEIGHT,
   });
 
   return {
