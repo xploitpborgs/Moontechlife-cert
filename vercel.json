@@ -1,5 +1,19 @@
 {
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "framework": "vite"
+  "framework": "vite",
+  "rewrites": [
+    {
+      "source": "/verify/:path*",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/designer",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/certificate-designer",
+      "destination": "/index.html"
+    }
+  ]
 }

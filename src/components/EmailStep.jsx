@@ -71,23 +71,15 @@ export default function EmailStep({ onSuccess }) {
 
       // 3. Send email — non-fatal so user can still proceed even if SMTP isn't configured
       let emailFailed = false;
-      let emailError = '';
       try {
         await sendOTPEmail(trimmed, student.full_name, code);
       } catch (emailErr) {
         console.error('SMTP full error object:', emailErr);
         emailFailed = true;
-        if (emailErr?.text) {
-          emailError = `[${emailErr.status}] ${emailErr.text}`;
-        } else if (emailErr?.message) {
-          emailError = emailErr.message;
-        } else {
-          try { emailError = JSON.stringify(emailErr); } catch { emailError = String(emailErr); }
-        }
       }
 
       // Advance to OTP screen regardless of email delivery
-      onSuccess({ email: trimmed, name: student.full_name, student }, emailFailed, emailError);
+      onSuccess({ email: trimmed, name: student.full_name, student }, emailFailed, '');
     } catch (err) {
       console.error('EmailStep error:', err);
       setError(err.message || 'Something went wrong. Please try again.');
