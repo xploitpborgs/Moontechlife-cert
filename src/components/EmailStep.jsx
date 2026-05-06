@@ -69,15 +69,14 @@ export default function EmailStep({ onSuccess }) {
         throw new Error(`Failed to create OTP: ${insertErr.message}`);
       }
 
-      // 3. Send email — non-fatal so user can still proceed even if EmailJS isn't configured
+      // 3. Send email — non-fatal so user can still proceed even if SMTP isn't configured
       let emailFailed = false;
       let emailError = '';
       try {
         await sendOTPEmail(trimmed, student.full_name, code);
       } catch (emailErr) {
-        console.error('EmailJS full error object:', emailErr);
+        console.error('SMTP full error object:', emailErr);
         emailFailed = true;
-        // EmailJS rejects with {status, text} — cover all shapes
         if (emailErr?.text) {
           emailError = `[${emailErr.status}] ${emailErr.text}`;
         } else if (emailErr?.message) {

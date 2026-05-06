@@ -131,7 +131,7 @@ export default function CertView({ student, dataUrl, blob, isPublic, renderBundl
     <div className="cert-wrapper">
       {!isPublic && (
         <div className="cert-header">
-          <div className="cert-congrats">🎉 Congratulations, {student.full_name}!</div>
+          <div className="cert-congrats">Congratulations, {student.full_name} 🎉</div>
           <p className="cert-subtitle">Your certificate has been generated successfully.</p>
         </div>
       )}

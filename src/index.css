@@ -494,6 +494,7 @@ body {
   max-width: 740px;
   margin: 0 auto;
   max-width: 100%;
+  align-items: center;
 }
 
 .cert-link-box {
@@ -502,7 +503,9 @@ body {
   border-radius: 16px;
   padding: 18px 20px;
   box-shadow: var(--shadow-soft);
-  max-width: 100%;
+  max-width: 560px;
+  width: 100%;
+  text-align: center;
 }
 
 .cert-link-label {
@@ -513,11 +516,13 @@ body {
   text-transform: uppercase;
   color: var(--text-muted);
   margin-bottom: 10px;
+  text-align: center;
 }
 
 .cert-link-row {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 12px;
   max-width: 100%;
 }
@@ -530,6 +535,7 @@ body {
   overflow-wrap: anywhere;
   max-width: 100%;
   font-family: 'DM Sans', monospace;
+  text-align: center;
 }
 
 .btn-copy {
@@ -562,6 +568,8 @@ body {
   cursor: pointer;
   transition: background 0.2s, color 0.2s, transform 0.15s;
   text-align: center;
+  width: 100%;
+  max-width: 560px;
 }
 .btn-download:hover {
   background: var(--accent-g);
@@ -574,7 +582,7 @@ body {
   .card { padding: 36px 24px; }
   .card-title { font-size: 1.5rem; }
   .cert-congrats { font-size: 1.4rem; }
-  .cert-link-row { flex-direction: column; align-items: flex-start; }
+  .cert-link-row { flex-direction: column; align-items: center; }
 }
 
 @media (max-width: 768px) {
@@ -608,7 +616,8 @@ body {
   .cert-debug,
   .cert-verify-card,
   .cert-actions,
-  .cert-link-box {
+  .cert-link-box,
+  .btn-download {
     width: 100%;
     max-width: 100%;
   }
@@ -654,7 +663,7 @@ body {
 
   .cert-link-row {
     flex-direction: column;
-    align-items: stretch;
+    align-items: center;
     gap: 10px;
   }
 

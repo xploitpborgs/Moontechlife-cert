@@ -22,6 +22,7 @@ import {
   resolveDesignerAccess,
   saveCertificateTemplateSettings,
 } from '../utils/certificateDesigner';
+import { sendTestEmail } from '../utils/mailApi';
 
 const FIELD_META = {
   recipient_name: { label: 'Recipient Name', sampleKey: 'recipientName' },
@@ -218,6 +219,7 @@ export default function CertDesigner() {
     saving: false,
     previewing: false,
     generating: false,
+    testingEmail: false,
   });
 
   useEffect(() => {
@@ -514,6 +516,25 @@ export default function CertDesigner() {
     }
   }
 
+  async function handleSendTestEmail() {
+    const adminEmail = authState.user?.email?.trim().toLowerCase();
+    if (!adminEmail) {
+      setStatus(buildStatus('error', 'No admin email was found for the current session.'));
+      return;
+    }
+
+    setActionState((current) => ({ ...current, testingEmail: true }));
+
+    try {
+      await sendTestEmail(adminEmail);
+      setStatus(buildStatus('success', `Test email sent to ${adminEmail}.`));
+    } catch (error) {
+      setStatus(buildStatus('error', error?.message || 'Failed to send the test email.'));
+    } finally {
+      setActionState((current) => ({ ...current, testingEmail: false }));
+    }
+  }
+
   function handleResetLayout() {
     if (!defaultLayout) return;
     setLayout(defaultLayout);
@@ -618,6 +639,9 @@ export default function CertDesigner() {
             </button>
             <button className="designer-btn ghost" type="button" onClick={handleResetLayout}>
               Reset Layout
+            </button>
+            <button className="designer-btn ghost" type="button" onClick={handleSendTestEmail} disabled={actionState.testingEmail}>
+              {actionState.testingEmail ? 'Sending Test…' : 'Send Test Email'}
             </button>
             <button className="designer-btn" type="button" onClick={handleGeneratePreview} disabled={actionState.previewing}>
               {actionState.previewing ? 'Rendering…' : 'Generate Preview'}

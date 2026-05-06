@@ -4,11 +4,6 @@ const env = import.meta.env;
 export const SUPABASE_URL = env.VITE_SUPABASE_URL || '';
 export const SUPABASE_ANON_KEY = env.VITE_SUPABASE_ANON_KEY || '';
 
-// EmailJS
-export const EMAILJS_SERVICE_ID = env.VITE_EMAILJS_SERVICE_ID || '';
-export const EMAILJS_TEMPLATE_ID = env.VITE_EMAILJS_TEMPLATE_ID || '';
-export const EMAILJS_PUBLIC_KEY = env.VITE_EMAILJS_PUBLIC_KEY || '';
-
 // Certificate template
 export const CERT_TEMPLATE_BUCKET = env.VITE_CERT_TEMPLATE_BUCKET || '';
 export const CERT_TEMPLATE_OBJECT_PATH = env.VITE_CERT_TEMPLATE_OBJECT_PATH || '';
