@@ -216,7 +216,14 @@ export default function CertView({ student, dataUrl, blob, isPublic, renderBundl
         <div className="cert-link-box">
           <span className="cert-link-label">Public Certificate Link</span>
           <div className="cert-link-row">
-            <span className="cert-link-url">{publicLink}</span>
+            <a
+              className="cert-link-url"
+              href={publicLink}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {publicLink}
+            </a>
             <button
               className="btn-copy"
               onClick={handleCopy}
