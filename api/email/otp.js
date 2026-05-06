@@ -1,8 +1,14 @@
-import { sendMail } from '../_mail.js';
+import { buildOtpEmail, sendMail } from '../_mail.js';
+import { requireAdminRequest } from '../_supabase.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const admin = await requireAdminRequest(req);
+  if (!admin.ok) {
+    return res.status(admin.status).json({ error: admin.error });
   }
 
   const { toEmail, toName, otpCode } = req.body || {};
@@ -10,27 +16,14 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'toEmail and otpCode are required.' });
   }
 
-  const safeName = `${toName || 'Learner'}`.trim() || 'Learner';
-  const safeCode = `${otpCode}`.trim();
-
   try {
     await sendMail({
       to: toEmail,
-      subject: 'Your MoonTech Life certificate verification code',
-      text: `Hello ${safeName},\n\nYour certificate verification code is ${safeCode}.\nIt expires in 10 minutes.\n\nMoonTech Life Community`,
-      html: `
-        <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #223630;">
-          <p>Hello ${safeName},</p>
-          <p>Your certificate verification code is:</p>
-          <p style="font-size: 28px; font-weight: 700; letter-spacing: 4px; margin: 16px 0;">${safeCode}</p>
-          <p>It expires in 10 minutes.</p>
-          <p>MoonTech Life Community</p>
-        </div>
-      `,
+      ...buildOtpEmail({ toName, otpCode }),
     });
     return res.json({ ok: true });
   } catch (error) {
     console.error('[smtp][otp]', error);
-    return res.status(500).json({ error: error?.message || 'Failed to send OTP email.' });
+    return res.status(500).json({ error: 'Failed to send the email right now.' });
   }
 }

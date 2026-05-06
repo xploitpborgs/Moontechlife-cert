@@ -4,7 +4,6 @@ import CertificateRenderer from './CertificateRenderer';
 import {
   createQrDataUrl,
 } from '../utils/certificateDesigner';
-import { markCertificateVerifiedInBrowser } from '../utils/cert';
 
 function round(value, decimals = 2) {
   const factor = 10 ** decimals;
@@ -64,12 +63,6 @@ export default function CertView({ student, dataUrl, blob, isPublic, renderBundl
       cancelled = true;
     };
   }, [publicLink, renderBundle?.previewData?.verificationUrl]);
-
-  useEffect(() => {
-    if (student?.otp_verified) {
-      markCertificateVerifiedInBrowser(student);
-    }
-  }, [student]);
 
   useEffect(() => {
     if (!renderBundle) return;

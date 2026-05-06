@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
 
+const { process } = globalThis;
 const children = [];
 
 function start(name, command, args) {

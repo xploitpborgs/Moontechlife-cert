@@ -1,11 +1,6 @@
 import { useState } from 'react';
-import supabase from '../supabase';
-import { generateOTP, sendOTPEmail } from '../utils/otp';
-import {
-  generateCertificateBlob,
-  isCertificateVerifiedInBrowser,
-  markCertificateVerifiedInBrowser,
-} from '../utils/cert';
+import { generateCertificateBlob } from '../utils/cert';
+import { requestCertificateOtp, isValidEmail } from '../utils/authApi';
 
 export default function EmailStep({ onSuccess }) {
   const [email, setEmail] = useState('');
@@ -15,73 +10,40 @@ export default function EmailStep({ onSuccess }) {
   async function handleSubmit(e) {
     e.preventDefault();
     setError('');
+
     const trimmed = email.trim().toLowerCase();
-    if (!trimmed) return setError('Please enter your email address.');
+
+    // Client-side format check (OWASP A03: input validation)
+    if (!trimmed) {
+      return setError('Please enter your email address.');
+    }
+    if (!isValidEmail(trimmed)) {
+      return setError('Please enter a valid email address (e.g. you@example.com).');
+    }
 
     setLoading(true);
     try {
-      // 1. Look up student by email
-      const { data: students, error: fetchErr } = await supabase
-        .from('students')
-        .select('*')
-        .eq('email', trimmed)
-        .limit(1);
+      const response = await requestCertificateOtp(trimmed);
 
-      if (fetchErr) {
-        throw new Error(`Database error: ${fetchErr.message}`);
-      }
-      if (!students || students.length === 0) {
-        setError('No student record found for this email address.');
-        setLoading(false);
-        return;
-      }
-
-      const student = students[0];
-      
-      const isVerifiedInDatabase = Boolean(student.otp_verified);
-      const isVerifiedInBrowser = isCertificateVerifiedInBrowser(student);
-
-      if (isVerifiedInDatabase || isVerifiedInBrowser) {
-        setLoading(true);
+      if (response?.alreadyVerified && response?.student) {
         try {
-          const { blob, dataUrl, renderBundle } = await generateCertificateBlob(student);
-          markCertificateVerifiedInBrowser(student);
-          onSuccess({ student, blob, dataUrl, renderBundle }, false, '', true);
+          const { blob, dataUrl, renderBundle } = await generateCertificateBlob(response.student);
+          onSuccess({ student: response.student, blob, dataUrl, renderBundle }, false, true);
           return;
         } catch (err) {
           console.error('Verified certificate fast-path failed:', err);
-        } finally {
-          setLoading(false);
         }
       }
 
-      const code = generateOTP();
-      const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
-
-      // 2. Save OTP to database
-      const { error: insertErr } = await supabase.from('otp_codes').insert({
-        email: trimmed,
-        code,
-        expires_at: expiresAt,
-        used: false,
-      });
-      if (insertErr) {
-        throw new Error(`Failed to create OTP: ${insertErr.message}`);
-      }
-
-      // 3. Send email — non-fatal so user can still proceed even if SMTP isn't configured
-      let emailFailed = false;
-      try {
-        await sendOTPEmail(trimmed, student.full_name, code);
-      } catch (emailErr) {
-        console.error('SMTP full error object:', emailErr);
-        emailFailed = true;
-      }
-
-      // Advance to OTP screen regardless of email delivery
-      onSuccess({ email: trimmed, name: student.full_name, student }, emailFailed, '');
+      // emailDispatched=false means the server found the address but email
+      // delivery failed — pass the failure flag so OTPStep can show a warning.
+      onSuccess(
+        { email: trimmed },
+        !response?.emailDispatched,
+      );
     } catch (err) {
       console.error('EmailStep error:', err);
+      // Surface the server error message directly — it is already user-friendly.
       setError(err.message || 'Something went wrong. Please try again.');
     } finally {
       setLoading(false);
@@ -103,19 +65,27 @@ export default function EmailStep({ onSuccess }) {
             id="email-input"
             type="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              if (error) setError(''); // clear stale error on typing
+            }}
             placeholder="you@example.com"
             disabled={loading}
             autoComplete="email"
+            aria-describedby={error ? 'email-error' : undefined}
           />
         </div>
 
-        {error && <p className="error-msg">{error}</p>}
+        {error && (
+          <p id="email-error" className="error-msg" role="alert">
+            {error}
+          </p>
+        )}
 
         <button
           type="submit"
           className="btn btn-primary btn-block"
-          disabled={loading || !email}
+          disabled={loading || !email.trim()}
         >
           {loading ? <span className="spinner" /> : 'Send Verification Code'}
         </button>

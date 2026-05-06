@@ -5,7 +5,13 @@ import { sendOtpEmail } from './mailApi';
  * @returns {string}
  */
 export function generateOTP() {
-  return String(Math.floor(100000 + Math.random() * 900000));
+  if (!globalThis.crypto?.getRandomValues) {
+    throw new Error('Secure OTP generation is unavailable in this environment.');
+  }
+
+  const buffer = new Uint32Array(1);
+  globalThis.crypto.getRandomValues(buffer);
+  return String(100000 + (buffer[0] % 900000));
 }
 
 function normalizeEmailError(error) {
