@@ -128,7 +128,7 @@ export default function OTPStep({ email, name, onSuccess, onBack, emailFailed, e
       {emailFailed ? (
         <p className="warn-msg">
           ⚠️ Email delivery failed{emailError ? `: "${emailError}"` : ''}.{' '}
-          The OTP code was saved to Supabase — look in the <code>otp_codes</code> table for your code, or fix the EmailJS config and resend below.
+          The OTP code was saved to Supabase — look in the <code>otp_codes</code> table for your code, or fix the SMTP config and resend below.
         </p>
       ) : (
         <p className="card-subtitle">
