@@ -190,7 +190,8 @@ app.use((_req, res) => {
 // ---------------------------------------------------------------------------
 // Global error handler
 // ---------------------------------------------------------------------------
-app.use((err, _req, res, _next) => {
+app.use((err, _req, res, next) => {
+  void next;
   console.error('[server][unhandled]', err);
   res.status(500).json({ error: 'An unexpected error occurred.' });
 });

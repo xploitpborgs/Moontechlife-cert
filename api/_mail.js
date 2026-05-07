@@ -2,6 +2,15 @@ import nodemailer from 'nodemailer';
 
 const { process } = globalThis;
 
+function stripUnsafeControlCharacters(value) {
+  return Array.from(`${value ?? ''}`)
+    .filter((character) => {
+      const code = character.charCodeAt(0);
+      return code !== 0 && !(code < 32 && ![9, 10, 13].includes(code)) && code !== 127;
+    })
+    .join('');
+}
+
 // ---------------------------------------------------------------------------
 // XSS / Injection helpers
 // ---------------------------------------------------------------------------
@@ -27,9 +36,7 @@ function escapeHtml(value = '') {
  * Strips null bytes and control characters (OWASP A03).
  */
 function normalizeText(value, fallback = '') {
-  const cleaned = `${value ?? ''}`
-    .replace(/\x00/g, '')                           // null byte
-    .replace(/[\x01-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '') // other control chars
+  const cleaned = stripUnsafeControlCharacters(value)
     .trim()
     .slice(0, 500);
   return cleaned || fallback;

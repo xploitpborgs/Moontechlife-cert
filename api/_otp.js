@@ -53,6 +53,28 @@ async function fetchCourseRecord(supabase, courseId) {
   return data || null;
 }
 
+async function fetchCourseRecordByName(supabase, courseName) {
+  const normalizedCourseName = `${courseName || ''}`.trim();
+  if (!normalizedCourseName) return null;
+
+  let { data, error } = await supabase
+    .from('courses')
+    .select('id, course_name, facilitator_name, facilitator_names, facilitator_title')
+    .ilike('course_name', normalizedCourseName)
+    .limit(1);
+
+  if (error && isMissingColumnError(error, 'facilitator_names')) {
+    ({ data, error } = await supabase
+      .from('courses')
+      .select('id, course_name, facilitator_name, facilitator_title')
+      .ilike('course_name', normalizedCourseName)
+      .limit(1));
+  }
+
+  if (error) throw error;
+  return data?.[0] || null;
+}
+
 async function fetchCourseFacilitators(supabase, courseId) {
   if (!courseId) return [];
 
@@ -114,10 +136,13 @@ function buildStudentCourseContext(student = {}, courseRecord = null, facilitato
 }
 
 async function resolveStudentCourseContext(supabase, student) {
-  const [courseRecord, facilitators] = await Promise.all([
-    fetchCourseRecord(supabase, student?.course_id),
-    fetchCourseFacilitators(supabase, student?.course_id),
-  ]);
+  const courseRecord = student?.course_id
+    ? await fetchCourseRecord(supabase, student.course_id)
+    : await fetchCourseRecordByName(supabase, student?.course);
+  const effectiveCourseId = student?.course_id || courseRecord?.id || null;
+  const facilitators = effectiveCourseId
+    ? await fetchCourseFacilitators(supabase, effectiveCourseId)
+    : [];
 
   return buildStudentCourseContext(student, courseRecord, facilitators);
 }
@@ -241,7 +266,6 @@ export async function requestOtpChallenge({ email, ip }) {
   // Attempt to dispatch the email — treat delivery failure as a soft error
   // so the student can use the "Resend" option without re-entering their email.
   let emailDispatched = true;
-  let dispatchError = null;
 
   try {
     await sendMail({
@@ -253,7 +277,6 @@ export async function requestOtpChallenge({ email, ip }) {
     });
   } catch (err) {
     emailDispatched = false;
-    dispatchError = err;
     console.error('[smtp][otp] Failed to send OTP email:', err?.message || err);
   }
 

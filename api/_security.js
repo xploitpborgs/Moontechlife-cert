@@ -1,5 +1,7 @@
 import { randomBytes, createHmac, timingSafeEqual } from 'node:crypto';
 
+const { process, Buffer } = globalThis;
+
 // ---------------------------------------------------------------------------
 // In-memory rate limiting (sliding-window counter)
 // ---------------------------------------------------------------------------
@@ -203,10 +205,12 @@ export function securityHeadersMiddleware(req, res, next) {
 /** Strip control characters and normalise whitespace. */
 export function sanitizeString(value, maxLength = 1000) {
   if (value === null || value === undefined) return '';
-  // Coerce to string, strip null bytes & control chars (except \t \n \r)
-  return String(value)
-    .replace(/\x00/g, '')                  // null byte
-    .replace(/[\x01-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '') // other control chars
+  return Array.from(String(value))
+    .filter((character) => {
+      const code = character.charCodeAt(0);
+      return code !== 0 && !(code < 32 && ![9, 10, 13].includes(code)) && code !== 127;
+    })
+    .join('')
     .trim()
     .slice(0, maxLength);
 }
@@ -310,4 +314,3 @@ export function strictJsonBody(req, res, next) {
   }
   return next();
 }
-
