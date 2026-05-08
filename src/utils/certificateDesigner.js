@@ -1023,7 +1023,12 @@ export async function renderCertificateArtifact({
   });
 
   const dataUrl = canvas.toDataURL('image/png');
-  const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+  let blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+
+  if (!blob) {
+    const response = await fetch(dataUrl);
+    blob = await response.blob();
+  }
 
   return {
     canvas,

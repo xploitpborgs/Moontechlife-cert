@@ -89,6 +89,17 @@ export function readBearerToken(req) {
 // "Synchronizer Token" embedded in a short-lived HMAC. This requires no
 // server-side session storage.
 // ---------------------------------------------------------------------------
+// IMPORTANT: CSRF_SECRET must be set as a persistent environment variable.
+// In a serverless environment (Vercel), each function invocation is isolated —
+// falling back to a per-process random secret means tokens issued by one
+// function instance will always be rejected by another. Fail loudly instead.
+if (!process.env.CSRF_SECRET) {
+  console.error(
+    '[security] CSRF_SECRET environment variable is not set. ' +
+    'CSRF protection will not work correctly in a serverless environment. ' +
+    'Set CSRF_SECRET in your Vercel project settings.',
+  );
+}
 const CSRF_SECRET = process.env.CSRF_SECRET || randomBytes(32).toString('hex');
 const CSRF_TOKEN_TTL_MS = 4 * 60 * 60 * 1000; // 4 hours
 

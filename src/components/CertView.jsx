@@ -21,6 +21,39 @@ function formatIssuedDate(value) {
   });
 }
 
+function getDownloadFilename(fullName = '') {
+  const safeName = `${fullName || 'certificate'}`
+    .trim()
+    .replace(/[^a-z0-9\s-]/gi, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+
+  return `certificate-${safeName || 'download'}.png`;
+}
+
+function isLimitedDownloadBrowser() {
+  if (typeof navigator === 'undefined') return false;
+
+  const userAgent = navigator.userAgent || '';
+  const isIOS = /iPad|iPhone|iPod/.test(userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const isWebView = /(FBAN|FBAV|Instagram|Line|wv)/i.test(userAgent);
+
+  return isIOS || isWebView;
+}
+
+function triggerDownload(href, filename) {
+  const anchor = document.createElement('a');
+  anchor.href = href;
+  anchor.download = filename;
+  anchor.rel = 'noopener noreferrer';
+  anchor.target = '_blank';
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+}
+
 export default function CertView({ student, dataUrl, blob, isPublic, renderBundle }) {
   const [copied, setCopied] = useState(false);
   const [qrPreviewUrl, setQrPreviewUrl] = useState('');
@@ -113,11 +146,34 @@ export default function CertView({ student, dataUrl, blob, isPublic, renderBundl
   }
 
   function handleDownload() {
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `certificate-${student.full_name.replace(/\s+/g, '-')}.png`;
-    a.click();
-    URL.revokeObjectURL(a.href);
+    const filename = getDownloadFilename(student.full_name);
+    const fallbackHref = dataUrl || '';
+    const canUseBlob = blob instanceof Blob && blob.size > 0;
+
+    if (isLimitedDownloadBrowser()) {
+      if (canUseBlob) {
+        const objectUrl = URL.createObjectURL(blob);
+        window.open(objectUrl, '_blank', 'noopener,noreferrer');
+        window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+        return;
+      }
+
+      if (fallbackHref) {
+        window.open(fallbackHref, '_blank', 'noopener,noreferrer');
+      }
+      return;
+    }
+
+    if (canUseBlob) {
+      const objectUrl = URL.createObjectURL(blob);
+      triggerDownload(objectUrl, filename);
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+      return;
+    }
+
+    if (fallbackHref) {
+      triggerDownload(fallbackHref, filename);
+    }
   }
 
   return (
