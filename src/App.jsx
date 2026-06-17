@@ -26,7 +26,6 @@ export default function App() {
   const [screen, setScreen] = useState(initialRoute.screen);
   const [studentInfo, setStudentInfo] = useState(null);
   const [emailFailed, setEmailFailed] = useState(false);
-  const [emailError, setEmailError] = useState('');
   const [certData, setCertData] = useState(null);
   const [publicLoading, setPublicLoading] = useState(initialRoute.screen === 'public');
   const [publicError, setPublicError] = useState('');
@@ -142,14 +141,13 @@ export default function App() {
       <main className="main-content centered">
         {screen === 'email' && (
           <EmailStep
-            onSuccess={(info, didEmailFail, errMsg, isAlreadyGenerated) => {
+            onSuccess={(info, didEmailFail, isAlreadyGenerated) => {
               if (isAlreadyGenerated) {
                 setCertData(info); // 'info' is the {student, blob, dataUrl} object in this case
                 setScreen('cert');
               } else {
                 setStudentInfo(info);
                 setEmailFailed(!!didEmailFail);
-                setEmailError(errMsg || '');
                 setScreen('otp');
               }
             }}
@@ -159,9 +157,7 @@ export default function App() {
         {screen === 'otp' && studentInfo && (
           <OTPStep
             email={studentInfo.email}
-            name={studentInfo.name}
             emailFailed={emailFailed}
-            emailError={emailError}
             onSuccess={(data) => {
               setCertData(data);
               setScreen('cert');

@@ -449,6 +449,28 @@ export async function fetchCourseRecord(courseId) {
   return data || null;
 }
 
+export async function fetchCourseRecordByName(courseName) {
+  const normalizedCourseName = `${courseName || ''}`.trim();
+  if (!normalizedCourseName) return null;
+
+  let { data, error } = await supabase
+    .from('courses')
+    .select('id, course_name, facilitator_name, facilitator_names, facilitator_title')
+    .ilike('course_name', normalizedCourseName)
+    .limit(1);
+
+  if (error && isMissingColumnError(error, 'facilitator_names')) {
+    ({ data, error } = await supabase
+      .from('courses')
+      .select('id, course_name, facilitator_name, facilitator_title')
+      .ilike('course_name', normalizedCourseName)
+      .limit(1));
+  }
+
+  if (error) throw error;
+  return data?.[0] || null;
+}
+
 export async function fetchCourseFacilitators(courseId) {
   if (!courseId) return [];
 
@@ -521,8 +543,11 @@ export function buildStudentCourseContext(student = {}, courseRecord = null, fac
 }
 
 export async function resolveStudentCourseContext(student = {}) {
-  const courseRecord = student.course_id ? await fetchCourseRecord(student.course_id) : null;
-  const facilitators = student.course_id ? await fetchCourseFacilitators(student.course_id) : [];
+  const courseRecord = student.course_id
+    ? await fetchCourseRecord(student.course_id)
+    : await fetchCourseRecordByName(student.course);
+  const effectiveCourseId = student.course_id || courseRecord?.id || null;
+  const facilitators = effectiveCourseId ? await fetchCourseFacilitators(effectiveCourseId) : [];
   return buildStudentCourseContext(student, courseRecord, facilitators);
 }
 
@@ -998,7 +1023,12 @@ export async function renderCertificateArtifact({
   });
 
   const dataUrl = canvas.toDataURL('image/png');
-  const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+  let blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+
+  if (!blob) {
+    const response = await fetch(dataUrl);
+    blob = await response.blob();
+  }
 
   return {
     canvas,

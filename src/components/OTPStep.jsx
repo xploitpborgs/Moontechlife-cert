@@ -1,17 +1,16 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import supabase from '../supabase';
-import { generateCertificateBlob, markCertificateVerifiedInBrowser } from '../utils/cert';
-import { resolveStudentCourseContext } from '../utils/certificateDesigner';
-import { generateOTP, sendOTPEmail } from '../utils/otp';
+import { generateCertificateBlob } from '../utils/cert';
+import { requestCertificateOtp, verifyCertificateOtp } from '../utils/authApi';
 
 const RESEND_SECONDS = 60;
 
-export default function OTPStep({ email, name, onSuccess, onBack, emailFailed, emailError }) {
+export default function OTPStep({ email, onSuccess, onBack, emailFailed }) {
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [countdown, setCountdown] = useState(RESEND_SECONDS);
   const [resending, setResending] = useState(false);
+  const [resendSuccess, setResendSuccess] = useState(false);
   const inputRef = useRef(null);
 
   useEffect(() => {
@@ -27,62 +26,12 @@ export default function OTPStep({ email, name, onSuccess, onBack, emailFailed, e
     if (otp.length !== 6) return setError('Enter all 6 digits.');
     setLoading(true);
     try {
-      const now = new Date().toISOString();
-
-      // Validate OTP
-      const { data: rows, error: fetchErr } = await supabase
-        .from('otp_codes')
-        .select('id, code, expires_at, used')
-        .eq('email', email)
-        .eq('code', otp)
-        .eq('used', false)
-        .gt('expires_at', now)
-        .order('created_at', { ascending: false })
-        .limit(1);
-
-      if (fetchErr) throw fetchErr;
-      if (!rows || rows.length === 0) {
-        setError('Invalid or expired code. Please try again.');
-        setLoading(false);
-        return;
+      const response = await verifyCertificateOtp(email, otp);
+      const student = response?.student;
+      if (!student) {
+        throw new Error('Verification failed. Please try again.');
       }
-
-      const otpRow = rows[0];
-
-      // Mark OTP used
-      await supabase.from('otp_codes').update({ used: true }).eq('id', otpRow.id);
-
-      // Load student
-      const { data: students, error: stuErr } = await supabase
-        .from('students')
-        .select('*')
-        .eq('email', email)
-        .limit(1);
-      if (stuErr) throw stuErr;
-      const student = students[0];
-
-      const certGeneratedAt = new Date().toISOString();
-      const courseContext = await resolveStudentCourseContext(student);
-      const verifiedUpdate = {
-        cert_generated_at: student.cert_generated_at || certGeneratedAt,
-        otp_verified: true,
-        otp_verified_at: certGeneratedAt,
-        otp_verified_by_email: email,
-        course_name_snapshot: courseContext.courseName || student.course_name_snapshot || student.course || '',
-        facilitator_name_snapshot: courseContext.facilitatorName || student.facilitator_name_snapshot || '',
-        facilitator_title_snapshot: courseContext.facilitatorTitle || student.facilitator_title_snapshot || '',
-      };
-
-      await supabase
-        .from('students')
-        .update(verifiedUpdate)
-        .eq('id', student.id);
-
-      Object.assign(student, verifiedUpdate);
-      markCertificateVerifiedInBrowser(student);
-
       const { blob, dataUrl, renderBundle } = await generateCertificateBlob(student);
-
       onSuccess({ student, blob, dataUrl, renderBundle });
     } catch (err) {
       console.error(err);
@@ -105,15 +54,34 @@ export default function OTPStep({ email, name, onSuccess, onBack, emailFailed, e
   async function handleResend() {
     setResending(true);
     setError('');
+    setResendSuccess(false);
     try {
-      const code = generateOTP();
-      const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
-      await supabase.from('otp_codes').insert({ email, code, expires_at: expiresAt, used: false });
-      await sendOTPEmail(email, name, code);
+      const response = await requestCertificateOtp(email);
+
+      if (response?.alreadyVerified && response?.student) {
+        const { blob, dataUrl, renderBundle } = await generateCertificateBlob(response.student);
+        onSuccess({ student: response.student, blob, dataUrl, renderBundle });
+        return;
+      }
+
+      if (!response?.emailDispatched) {
+        // The server returned ok:false with an error message when delivery fails
+        setError(
+          response?.error ||
+          'We could not send your verification code right now. Please try again in a moment.',
+        );
+        return;
+      }
+
       setCountdown(RESEND_SECONDS);
       setOtp('');
-    } catch {
-      setError('Failed to resend code. Please try again.');
+      setResendSuccess(true);
+    } catch (err) {
+      // err.message comes from the server's JSON error field via authApi
+      setError(
+        err.message ||
+        'We could not send your verification code right now. Please try again in a moment.',
+      );
     } finally {
       setResending(false);
     }
@@ -125,14 +93,22 @@ export default function OTPStep({ email, name, onSuccess, onBack, emailFailed, e
       <div className="card-icon">✉️</div>
       <h1 className="card-title">Check Your Email</h1>
 
+      {/* Email dispatch failure warning (shown when initial send failed) */}
       {emailFailed ? (
-        <p className="warn-msg">
-          ⚠️ Email delivery failed{emailError ? `: "${emailError}"` : ''}.{' '}
-          The OTP code was saved to Supabase — look in the <code>otp_codes</code> table for your code, or fix the SMTP config and resend below.
+        <p className="warn-msg" role="alert">
+          ⚠️ We could not send your verification code right now. Please use the
+          resend option below or try again in a moment.
         </p>
       ) : (
         <p className="card-subtitle">
           We sent a 6-digit code to <strong>{email}</strong>. It expires in 10 minutes.
+        </p>
+      )}
+
+      {/* Resend success notice */}
+      {resendSuccess && (
+        <p className="success-msg" role="status">
+          ✅ A new code has been sent to <strong>{email}</strong>.
         </p>
       )}
 
@@ -152,12 +128,21 @@ export default function OTPStep({ email, name, onSuccess, onBack, emailFailed, e
           className="otp-input"
           disabled={loading}
           autoComplete="one-time-code"
+          aria-describedby={error ? 'otp-error' : undefined}
         />
       </div>
 
-      {error && <p className="error-msg">{error}</p>}
+      {error && (
+        <p id="otp-error" className="error-msg" role="alert">
+          {error}
+        </p>
+      )}
 
-      <button className="btn-primary" onClick={handleVerify} disabled={loading || otp.length !== 6}>
+      <button
+        className="btn-primary"
+        onClick={handleVerify}
+        disabled={loading || otp.length !== 6}
+      >
         {loading ? <span className="spinner" /> : 'Verify & Get Certificate'}
       </button>
 
