@@ -1,0 +1,19 @@
+name: Supabase Keep Alive
+
+on:
+  schedule:
+    # Runs at 00:00 every Monday, Wednesday, and Friday
+    - cron: '0 0 * * 1,3,5'
+  workflow_dispatch: # Allows you to run this manually from the Actions tab
+
+jobs:
+  ping-supabase:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase Database
+        # This makes a simple read-only query to keep the database active.
+        # It uses the public anon key, which is safe to be exposed here since it's already public in the frontend.
+        run: |
+          curl -s "https://egmabtxeftcznyrhfxly.supabase.co/rest/v1/students?select=*&limit=1" \
+          -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVnbWFidHhlZnRjem55cmhmeGx5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4NDY2NTcsImV4cCI6MjA5MzQyMjY1N30.qL7-U9hve6GPzGhOf7cd2K7DskI593dg2CWhj43SySY" \
+          -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVnbWFidHhlZnRjem55cmhmeGx5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4NDY2NTcsImV4cCI6MjA5MzQyMjY1N30.qL7-U9hve6GPzGhOf7cd2K7DskI593dg2CWhj43SySY"
