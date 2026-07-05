@@ -393,7 +393,7 @@ export default function AwardLookup() {
         color: 'rgba(255,255,255,0.2)',
         fontSize: '0.75rem',
       }}>
-        © {new Date().getFullYear()} MoonTech Life · Awards Portal
+        © {new Date().getFullYear()} MoonTech Life Community · Awards Portal
       </footer>
     </div>
   );
