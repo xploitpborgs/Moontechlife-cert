@@ -4,9 +4,9 @@
   "framework": "vite",
   "redirects": [
     {
-      "source": "/(.*)",
+      "source": "/",
       "has": [{ "type": "host", "value": "award.moontechlife.com" }],
-      "destination": "https://certs.moontechlife.com/award",
+      "destination": "/award",
       "permanent": false
     }
   ],
