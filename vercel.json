@@ -2,6 +2,14 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "framework": "vite",
+  "redirects": [
+    {
+      "source": "/(.*)",
+      "has": [{ "type": "host", "value": "award.moontechlife.com" }],
+      "destination": "https://certs.moontechlife.com/award",
+      "permanent": false
+    }
+  ],
   "rewrites": [
     {
       "source": "/(.*)",
