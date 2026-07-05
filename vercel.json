@@ -4,31 +4,7 @@
   "framework": "vite",
   "rewrites": [
     {
-      "source": "/verify/:path*",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/designer",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/certificate-designer",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/award",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/awards",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/generator",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/generate",
+      "source": "/(.*)",
       "destination": "/index.html"
     }
   ]
