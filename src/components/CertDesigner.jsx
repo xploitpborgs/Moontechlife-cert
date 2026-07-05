@@ -28,6 +28,8 @@ const FIELD_META = {
   recipient_name: { label: 'Recipient Name', sampleKey: 'recipientName' },
   description_text: { label: 'Description Text', sampleKey: 'descriptionText' },
   qr_code: { label: 'QR Code', sampleKey: 'verificationUrl' },
+  title_text: { label: 'Title', sampleKey: 'titleText' },
+  signature_text: { label: 'Signature', sampleKey: 'signatureText' },
 };
 
 function round(value, decimals = 2) {
@@ -202,7 +204,12 @@ export default function CertDesigner() {
   const [layout, setLayout] = useState(null);
   const [defaultLayout, setDefaultLayout] = useState(null);
   const [selectedField, setSelectedField] = useState('recipient_name');
-  const [sampleData, setSampleData] = useState(getDefaultSampleData());
+  const [selectedTemplateId, setSelectedTemplateId] = useState('template_1');
+  const [sampleData, setSampleData] = useState({
+    ...getDefaultSampleData(),
+    titleText: 'Director of Programs',
+    signatureText: 'Jane Doe',
+  });
   const [courseState, setCourseState] = useState({
     loading: false,
     options: [],
@@ -254,8 +261,8 @@ export default function CertDesigner() {
         setCourseState((current) => ({ ...current, loading: true, error: '' }));
 
         const [template, savedSettings, courseOptions] = await Promise.all([
-          loadCertificateTemplate(),
-          fetchCertificateTemplateSettings(),
+          loadCertificateTemplate(selectedTemplateId),
+          fetchCertificateTemplateSettings(selectedTemplateId),
           fetchCourseOptions().catch((error) => {
             if (!cancelled) {
               setCourseState({
@@ -322,7 +329,7 @@ export default function CertDesigner() {
       cancelled = true;
       data.subscription.unsubscribe();
     };
-  }, []);
+  }, [selectedTemplateId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -504,8 +511,16 @@ export default function CertDesigner() {
           ...layout.description_text,
           default_text: sampleData.descriptionText,
         },
+        title_text: {
+          ...layout.title_text,
+          default_text: sampleData.titleText,
+        },
+        signature_text: {
+          ...layout.signature_text,
+          default_text: sampleData.signatureText,
+        },
       };
-      await saveCertificateTemplateSettings(layoutToSave);
+      await saveCertificateTemplateSettings(layoutToSave, selectedTemplateId);
       setLayout(layoutToSave);
       setDefaultLayout(layoutToSave);
       setStatus(buildStatus('success', 'Layout saved to Supabase.'));
@@ -626,7 +641,7 @@ export default function CertDesigner() {
             <p className="designer-kicker">Admin Workspace</p>
             <h1>Certificate Designer</h1>
             <p className="designer-subtitle">
-              Only the recipient name, description text, and QR code are editable. All previews and exports use the same CertificateRenderer path.
+              Configure layout fields. All previews and exports use the same CertificateRenderer path.
             </p>
           </div>
 
@@ -677,6 +692,17 @@ export default function CertDesigner() {
             </div>
 
             <div className="designer-sample-grid">
+              <label className="designer-control wide">
+                <span>Select Template</span>
+                <select
+                  value={selectedTemplateId}
+                  onChange={(event) => setSelectedTemplateId(event.target.value)}
+                >
+                  <option value="template_1">Template 1 (Standard)</option>
+                  <option value="template_2">Template 2 (Alternate)</option>
+                </select>
+              </label>
+
               <label className="designer-control wide">
                 <span>Sample Recipient Name</span>
                 <input
@@ -730,6 +756,24 @@ export default function CertDesigner() {
                   type="url"
                   value={sampleData.verificationUrl}
                   onChange={(event) => handleTextInput('verificationUrl', event.target.value)}
+                />
+              </label>
+
+              <label className="designer-control wide">
+                <span>Sample Title Text</span>
+                <input
+                  type="text"
+                  value={sampleData.titleText}
+                  onChange={(event) => handleTextInput('titleText', event.target.value)}
+                />
+              </label>
+
+              <label className="designer-control wide">
+                <span>Sample Signature Text</span>
+                <input
+                  type="text"
+                  value={sampleData.signatureText}
+                  onChange={(event) => handleTextInput('signatureText', event.target.value)}
                 />
               </label>
             </div>
@@ -796,7 +840,7 @@ export default function CertDesigner() {
               <div className="designer-panel-head tight">
                 <div>
                   <h2>Editable Fields</h2>
-                  <p>Only recipient name, description text, and QR code exist in the layout state.</p>
+                  <p>Select a field to modify its configuration.</p>
                 </div>
               </div>
 
