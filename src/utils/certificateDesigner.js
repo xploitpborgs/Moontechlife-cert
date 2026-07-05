@@ -9,7 +9,7 @@ import {
 } from '../config';
 
 export const CERTIFICATE_SETTINGS_TABLE = 'certificate_template_settings';
-export const EDITABLE_FIELD_KEYS = ['recipient_name', 'description_text', 'qr_code'];
+export const EDITABLE_FIELD_KEYS = ['recipient_name', 'description_text', 'qr_code', 'title_text', 'signature_text'];
 export const ADMIN_ROLES = new Set(['admin', 'system_admin']);
 export const ORIGINAL_CERTIFICATE_WIDTH = 1472;
 export const ORIGINAL_CERTIFICATE_HEIGHT = 1040;
@@ -52,6 +52,8 @@ const fieldLabels = {
   recipient_name: 'Recipient Name',
   description_text: 'Description Text',
   qr_code: 'QR Code',
+  title_text: 'Title',
+  signature_text: 'Signature',
 };
 
 function round(value, decimals = 2) {
@@ -601,6 +603,8 @@ export async function loadStudentCertificateRenderBundle(student) {
       recipientNameSettings: layout.recipient_name,
       descriptionTextSettings: layout.description_text,
       qrCodeSettings: layout.qr_code,
+      titleTextSettings: layout.title_text,
+      signatureTextSettings: layout.signature_text,
       studentCertificateData: student,
       courseContext,
       previewData,
@@ -660,6 +664,39 @@ export function createDefaultLayout() {
       is_italic: false,
       auto_fit_enabled: false,
     },
+    title_text: createTextField({
+      fieldKey: 'title_text',
+      xRatio: 0.19,
+      yRatio: 0.75,
+      widthRatio: 0.62,
+      heightRatio: 0.08,
+      defaultText: 'Director',
+      fontFamily: 'Montserrat, sans-serif',
+      fontWeight: '600',
+      textColor: '#2f3552',
+      letterSpacing: 0,
+      lineHeight: 1.25,
+      textAlign: 'center',
+      fontSize: 24,
+      minFontSize: 16,
+    }),
+    signature_text: createTextField({
+      fieldKey: 'signature_text',
+      xRatio: 0.19,
+      yRatio: 0.85,
+      widthRatio: 0.62,
+      heightRatio: 0.08,
+      defaultText: 'John Doe',
+      fontFamily: '"Playfair Display", serif',
+      fontWeight: '400',
+      textColor: '#1a1a2e',
+      letterSpacing: 0,
+      lineHeight: 1.25,
+      textAlign: 'center',
+      fontSize: 34,
+      minFontSize: 18,
+      isItalic: true,
+    }),
   };
 }
 
@@ -673,7 +710,7 @@ export function normalizeFieldLayout(fieldKey, field, fallback) {
     y_position: normalizeCoordinatePercent(field?.y_position, fallback.y_position, ORIGINAL_CERTIFICATE_HEIGHT),
     width: normalizeCoordinatePercent(field?.width, fallback.width, ORIGINAL_CERTIFICATE_WIDTH, true),
     height: normalizeCoordinatePercent(field?.height, fallback.height, ORIGINAL_CERTIFICATE_HEIGHT, true),
-    default_text: fieldKey === 'description_text'
+    default_text: (fieldKey === 'description_text' || fieldKey === 'title_text' || fieldKey === 'signature_text')
       ? `${field?.default_text ?? fallback.default_text ?? ''}`
       : null,
     font_family: fieldKey === 'description_text'
@@ -685,12 +722,12 @@ export function normalizeFieldLayout(fieldKey, field, fallback) {
     text_color: fieldKey === 'qr_code' ? null : field?.text_color || fallback.text_color,
     letter_spacing: fieldKey === 'qr_code'
       ? null
-      : fieldKey === 'description_text'
+      : (fieldKey === 'description_text' || fieldKey === 'title_text' || fieldKey === 'signature_text')
         ? 0
         : round(normalizeNumber(field?.letter_spacing, fallback.letter_spacing)),
     line_height: fieldKey === 'qr_code'
       ? null
-      : fieldKey === 'description_text'
+      : (fieldKey === 'description_text' || fieldKey === 'title_text' || fieldKey === 'signature_text')
         ? clamp(round(normalizeNumber(field?.line_height, fallback.line_height)), 1.2, 1.3)
         : round(normalizeNumber(field?.line_height, fallback.line_height)),
     text_align: fieldKey === 'qr_code' ? null : normalizeTextAlign(field?.text_align, fallback.text_align),
@@ -703,10 +740,11 @@ export function normalizeFieldLayout(fieldKey, field, fallback) {
   };
 }
 
-export async function getCertificateTemplatePublicUrl() {
+export async function getCertificateTemplatePublicUrl(templateId = 'template_1') {
+  const objectPath = templateId === 'template_2' ? 'cert_template_2.png' : CERT_TEMPLATE_OBJECT_PATH;
   const { data } = supabase.storage
     .from(CERT_TEMPLATE_BUCKET)
-    .getPublicUrl(CERT_TEMPLATE_OBJECT_PATH);
+    .getPublicUrl(objectPath);
 
   return data?.publicUrl || CERT_TEMPLATE_FALLBACK_URL;
 }
@@ -721,8 +759,8 @@ export async function loadImage(source) {
   });
 }
 
-export async function loadCertificateTemplate() {
-  const url = await getCertificateTemplatePublicUrl();
+export async function loadCertificateTemplate(templateId = 'template_1') {
+  const url = await getCertificateTemplatePublicUrl(templateId);
   await loadImage(url);
   return {
     url,
@@ -731,19 +769,22 @@ export async function loadCertificateTemplate() {
   };
 }
 
-export async function fetchCertificateTemplateSettings() {
+export async function fetchCertificateTemplateSettings(templateId = 'template_1') {
   const defaults = createDefaultLayout();
+  const fieldKeyPrefix = templateId === 'template_2' ? 't2_' : '';
+  const searchKeys = EDITABLE_FIELD_KEYS.map(k => `${fieldKeyPrefix}${k}`);
+
   let { data, error } = await supabase
     .from(CERTIFICATE_SETTINGS_TABLE)
     .select(CERTIFICATE_LAYOUT_COLUMNS.join(','))
-    .in('field_key', EDITABLE_FIELD_KEYS)
+    .in('field_key', searchKeys)
     .order('field_key');
 
   if (error && isMissingDefaultTextColumnError(error)) {
     ({ data, error } = await supabase
       .from(CERTIFICATE_SETTINGS_TABLE)
       .select(LEGACY_CERTIFICATE_LAYOUT_COLUMNS.join(','))
-      .in('field_key', EDITABLE_FIELD_KEYS)
+      .in('field_key', searchKeys)
       .order('field_key'));
   }
 
@@ -760,7 +801,8 @@ export async function fetchCertificateTemplateSettings() {
 
   const layout = { ...defaults };
   for (const fieldKey of EDITABLE_FIELD_KEYS) {
-    const savedField = data?.find((row) => row.field_key === fieldKey);
+    const dbKey = `${fieldKeyPrefix}${fieldKey}`;
+    const savedField = data?.find((row) => row.field_key === dbKey);
     layout[fieldKey] = normalizeFieldLayout(fieldKey, savedField, defaults[fieldKey]);
   }
 
@@ -771,16 +813,18 @@ export async function fetchCertificateTemplateSettings() {
   };
 }
 
-export async function saveCertificateTemplateSettings(layout) {
+export async function saveCertificateTemplateSettings(layout, templateId = 'template_1') {
+  const fieldKeyPrefix = templateId === 'template_2' ? 't2_' : '';
   const rows = EDITABLE_FIELD_KEYS.map((fieldKey) => {
     const field = layout[fieldKey];
+    const dbKey = `${fieldKeyPrefix}${fieldKey}`;
     return {
-      field_key: fieldKey,
+      field_key: dbKey,
       x_position: round(field.x_position, 6),
       y_position: round(field.y_position, 6),
       width: round(field.width, 6),
       height: round(field.height, 6),
-      default_text: fieldKey === 'description_text' ? `${field.default_text || ''}` : null,
+      default_text: (fieldKey === 'description_text' || fieldKey === 'title_text' || fieldKey === 'signature_text') ? `${field.default_text || ''}` : null,
       font_family: fieldKey === 'qr_code' ? null : field.font_family,
       font_size: fieldKey === 'qr_code' ? null : round(field.font_size),
       font_weight: fieldKey === 'qr_code' ? null : field.font_weight,

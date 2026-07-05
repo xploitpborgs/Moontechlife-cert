@@ -5,6 +5,8 @@ import EmailStep from './components/EmailStep';
 import OTPStep from './components/OTPStep';
 import CertView from './components/CertView';
 import CertDesigner from './components/CertDesigner';
+import CertGenerator from './components/CertGenerator';
+import AwardLookup from './components/AwardLookup';
 
 function getInitialRoute() {
   const params = new URLSearchParams(window.location.search);
@@ -12,6 +14,14 @@ function getInitialRoute() {
 
   if (params.get('design') || pathname === '/designer' || pathname === '/certificate-designer') {
     return { screen: 'design', token: null };
+  }
+  
+  if (pathname === '/generator' || pathname === '/generate') {
+    return { screen: 'generate', token: null };
+  }
+
+  if (pathname === '/award' || pathname === '/awards') {
+    return { screen: 'award', token: null };
   }
 
   const verifyMatch = pathname.match(/^\/verify\/([^/]+)$/);
@@ -67,8 +77,10 @@ export default function App() {
     })();
   }, [initialRoute.token, screen]);
 
-  // --- Designer route rendering ---
+  // --- Admin routes rendering ---
   if (screen === 'design') return <CertDesigner />;
+  if (screen === 'generate') return <CertGenerator />;
+  if (screen === 'award') return <AwardLookup />;
 
   // --- Public route rendering ---
   if (screen === 'public') {

@@ -115,7 +115,7 @@ body {
   text-transform: uppercase;
 }
 
-.logo-accent { color: var(--accent); }
+.logo-accent { color: #e4c26d; }
 
 .main-content {
   flex: 1;
