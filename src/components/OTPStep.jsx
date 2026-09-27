@@ -31,8 +31,9 @@ export default function OTPStep({ email, onSuccess, onBack, emailFailed }) {
       if (!student) {
         throw new Error('Verification failed. Please try again.');
       }
+      const students = response?.students || [student];
       const { blob, dataUrl, renderBundle } = await generateCertificateBlob(student);
-      onSuccess({ student, blob, dataUrl, renderBundle });
+      onSuccess({ student, students, blob, dataUrl, renderBundle });
     } catch (err) {
       console.error(err);
       setError(err.message || 'Verification failed. Please try again.');
@@ -59,8 +60,9 @@ export default function OTPStep({ email, onSuccess, onBack, emailFailed }) {
       const response = await requestCertificateOtp(email);
 
       if (response?.alreadyVerified && response?.student) {
+        const students = response?.students || [response.student];
         const { blob, dataUrl, renderBundle } = await generateCertificateBlob(response.student);
-        onSuccess({ student: response.student, blob, dataUrl, renderBundle });
+        onSuccess({ student: response.student, students, blob, dataUrl, renderBundle });
         return;
       }
 

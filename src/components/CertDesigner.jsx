@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { Rnd } from 'react-rnd';
 import supabase from '../supabase';
 import CertificateRenderer from './CertificateRenderer';
+import { CohortPanel } from './CohortManager';
+
 import {
   EDITABLE_FIELD_KEYS,
   FONT_FAMILY_OPTIONS,
@@ -228,6 +230,7 @@ export default function CertDesigner() {
     generating: false,
     testingEmail: false,
   });
+  const [activeTab, setActiveTab] = useState('designer'); // 'designer' | 'cohorts'
 
   useEffect(() => {
     document.title = 'Certificate Designer';
@@ -354,7 +357,7 @@ export default function CertDesigner() {
   const sidebarScale = 360 / ORIGINAL_CERTIFICATE_WIDTH;
   const previewSampleData = {
     ...sampleData,
-    descriptionText: resolveCoursePlaceholder(sampleData.descriptionText, sampleData.selectedCourse),
+    descriptionText: resolveCoursePlaceholder(sampleData.descriptionText, sampleData.selectedCourse, '', sampleData.cohortType),
   };
   const selectedLayoutField = layout?.[selectedField] || null;
   const selectedFieldPixels = selectedLayoutField
@@ -646,26 +649,49 @@ export default function CertDesigner() {
           </div>
 
           <div className="designer-actions">
-            <button className="designer-btn ghost" type="button" onClick={() => setDebugMode((current) => !current)}>
-              {debugMode ? 'Hide Debug' : 'Show Debug'}
-            </button>
+            {/* Tab switcher */}
+            <div className="designer-tab-bar">
+              <button
+                type="button"
+                className={`designer-tab-btn${activeTab === 'designer' ? ' active' : ''}`}
+                onClick={() => setActiveTab('designer')}
+              >
+                🎨 Designer
+              </button>
+              <button
+                type="button"
+                className={`designer-tab-btn${activeTab === 'cohorts' ? ' active' : ''}`}
+                onClick={() => setActiveTab('cohorts')}
+              >
+                🎓 Cohorts
+              </button>
+            </div>
+
+            {activeTab === 'designer' && (
+              <>
+                <button className="designer-btn ghost" type="button" onClick={() => setDebugMode((current) => !current)}>
+                  {debugMode ? 'Hide Debug' : 'Show Debug'}
+                </button>
+                <button className="designer-btn ghost" type="button" onClick={handleResetLayout}>
+                  Reset Layout
+                </button>
+                <button className="designer-btn ghost" type="button" onClick={handleSendTestEmail} disabled={actionState.testingEmail}>
+                  {actionState.testingEmail ? 'Sending Test…' : 'Send Test Email'}
+                </button>
+                <button className="designer-btn" type="button" onClick={handleGeneratePreview} disabled={actionState.previewing}>
+                  {actionState.previewing ? 'Rendering…' : 'Generate Preview'}
+                </button>
+                <button className="designer-btn" type="button" onClick={handleGenerateCertificate} disabled={actionState.generating}>
+                  {actionState.generating ? 'Generating…' : 'Generate Certificate'}
+                </button>
+                <button className="designer-btn primary" type="button" onClick={handleSaveLayout} disabled={actionState.saving}>
+                  {actionState.saving ? 'Saving…' : 'Save Layout'}
+                </button>
+              </>
+            )}
+
             <button className="designer-btn ghost" type="button" onClick={handleAdminSignOut}>
               Sign Out
-            </button>
-            <button className="designer-btn ghost" type="button" onClick={handleResetLayout}>
-              Reset Layout
-            </button>
-            <button className="designer-btn ghost" type="button" onClick={handleSendTestEmail} disabled={actionState.testingEmail}>
-              {actionState.testingEmail ? 'Sending Test…' : 'Send Test Email'}
-            </button>
-            <button className="designer-btn" type="button" onClick={handleGeneratePreview} disabled={actionState.previewing}>
-              {actionState.previewing ? 'Rendering…' : 'Generate Preview'}
-            </button>
-            <button className="designer-btn" type="button" onClick={handleGenerateCertificate} disabled={actionState.generating}>
-              {actionState.generating ? 'Generating…' : 'Generate Certificate'}
-            </button>
-            <button className="designer-btn primary" type="button" onClick={handleSaveLayout} disabled={actionState.saving}>
-              {actionState.saving ? 'Saving…' : 'Save Layout'}
             </button>
             <a href="/" className="designer-close-btn" title="Close Designer">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -678,8 +704,13 @@ export default function CertDesigner() {
 
         <div className={`designer-status ${status.type}`}>{status.message}</div>
 
-        <div className="designer-grid">
-          <section className="designer-stage-panel">
+        {activeTab === 'cohorts' ? (
+          <CohortPanel
+            onStatusChange={(type, message) => setStatus(buildStatus(type, message))}
+          />
+        ) : (
+          <div className="designer-grid">
+            <section className="designer-stage-panel">
             <div className="designer-panel-head">
               <div>
                 <h2>Main Certificate Workspace</h2>
@@ -1022,6 +1053,7 @@ export default function CertDesigner() {
             </section>
           </aside>
         </div>
+        )}
       </div>
     </div>
   );

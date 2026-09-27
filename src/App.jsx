@@ -8,6 +8,7 @@ import CertDesigner from './components/CertDesigner';
 import CertGenerator from './components/CertGenerator';
 import AwardLookup from './components/AwardLookup';
 
+
 function getInitialRoute() {
   const params = new URLSearchParams(window.location.search);
   const pathname = window.location.pathname.replace(/\/+$/, '') || '/';
@@ -78,9 +79,12 @@ export default function App() {
   }, [initialRoute.token, screen]);
 
   // --- Admin routes rendering ---
-  if (screen === 'design') return <CertDesigner />;
+  if (screen === 'design')   return <CertDesigner />;
   if (screen === 'generate') return <CertGenerator />;
-  if (screen === 'award') return <AwardLookup />;
+  if (screen === 'award')    return <AwardLookup />;
+
+
+
 
   // --- Public route rendering ---
   if (screen === 'public') {
@@ -181,6 +185,7 @@ export default function App() {
         {screen === 'cert' && certData && (
           <CertView
             student={certData.student}
+            students={certData.students}
             dataUrl={certData.dataUrl}
             blob={certData.blob}
             renderBundle={certData.renderBundle}

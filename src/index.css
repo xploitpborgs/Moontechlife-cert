@@ -1411,3 +1411,416 @@ body {
     align-items: flex-start;
   }
 }
+
+/* ── Certificate Switcher UI ───────────────────────────────────── */
+.cert-switcher {
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto 24px auto;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(249, 233, 169, 0.6);
+  border-radius: 16px;
+  padding: 16px 20px;
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+  text-align: center;
+}
+
+.cert-switcher-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--graphite);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.cert-switcher-icon {
+  font-size: 1.1rem;
+}
+
+.cert-switcher-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.cert-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 9999px;
+  border: 1px solid var(--border);
+  background: rgba(244, 244, 245, 0.8);
+  color: var(--text-muted);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.02);
+}
+
+.cert-tab-btn:hover {
+  background: rgba(249, 233, 169, 0.35);
+  border-color: rgba(230, 200, 100, 0.5);
+  color: var(--graphite);
+  transform: translateY(-1px);
+}
+
+.cert-tab-btn.active {
+  background: var(--graphite);
+  color: #ffffff;
+  border-color: var(--graphite);
+  box-shadow: 0 4px 14px rgba(34, 54, 48, 0.25);
+  transform: scale(1.02);
+}
+
+.cert-tab-badge-icon {
+  font-size: 1.05rem;
+}
+
+.cert-tab-badge-text {
+  white-space: nowrap;
+}
+
+/* ── Cohort Manager ────────────────────────────────────────── */
+
+.cohort-manager-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 0 2rem 3rem;
+  max-width: 900px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* Form panel */
+.cohort-form-panel {
+  background: rgba(255,255,255,0.9);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  padding: 2rem;
+  box-shadow: var(--shadow-soft);
+  animation: slideUp 0.25s ease;
+}
+
+.cohort-form-title {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--graphite);
+  margin-bottom: 1.25rem;
+  letter-spacing: -0.02em;
+}
+
+.cohort-form-row {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.25rem;
+}
+
+.cohort-form-row.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+@media (max-width: 600px) {
+  .cohort-form-row.two-col { grid-template-columns: 1fr; }
+}
+
+.cohort-form-btns {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+/* Icon picker */
+.icon-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.icon-option {
+  width: 38px;
+  height: 38px;
+  font-size: 1.3rem;
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  background: rgba(255,255,255,0.7);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.icon-option:hover {
+  border-color: var(--accent);
+  transform: scale(1.1);
+}
+
+.icon-option.selected {
+  border-color: var(--accent);
+  background: linear-gradient(135deg, rgba(228,194,109,0.3), rgba(155,118,65,0.15));
+  box-shadow: 0 0 0 3px rgba(228,194,109,0.28);
+}
+
+/* Preview box */
+.cohort-preview-box {
+  background: linear-gradient(135deg, rgba(249,233,169,0.3), rgba(244,244,245,0.5));
+  border: 1px dashed var(--accent);
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.9rem;
+  color: var(--graphite);
+  line-height: 1.5;
+}
+
+.cohort-preview-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--stone);
+  display: block;
+  margin-bottom: 4px;
+}
+
+/* Cohort cards */
+.cohort-list-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.cohort-card {
+  background: rgba(255,255,255,0.92);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  padding: 1.25rem 1.5rem;
+  box-shadow: var(--shadow-soft);
+  transition: box-shadow 0.2s, transform 0.15s;
+}
+
+.cohort-card:hover {
+  box-shadow: 0 8px 30px rgba(34,54,48,0.1);
+  transform: translateY(-1px);
+}
+
+.cohort-card-head {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.cohort-icon {
+  font-size: 2rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.cohort-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.cohort-label {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--graphite);
+  margin: 0 0 2px;
+}
+
+.cohort-slug {
+  font-size: 0.78rem;
+  color: var(--stone);
+  background: rgba(34,54,48,0.06);
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+.cohort-preview {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  line-height: 1.55;
+  margin: 0;
+}
+
+.cohort-preview em {
+  font-style: normal;
+  font-weight: 700;
+  color: var(--stone);
+  margin-right: 4px;
+}
+
+.cohort-card-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.cohort-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 14px;
+  border-radius: 99px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  font-family: 'Montserrat', sans-serif;
+  cursor: pointer;
+  border: 1px solid;
+  transition: all 0.15s ease;
+}
+
+.cohort-action-btn.edit {
+  background: rgba(34,54,48,0.05);
+  border-color: var(--border);
+  color: var(--text);
+}
+
+.cohort-action-btn.edit:hover {
+  background: var(--graphite);
+  color: #fff;
+  border-color: var(--graphite);
+}
+
+.cohort-action-btn.delete {
+  background: transparent;
+  border-color: rgba(157,66,81,0.25);
+  color: var(--error);
+}
+
+.cohort-action-btn.delete:hover:not(:disabled) {
+  background: var(--error);
+  color: #fff;
+  border-color: var(--error);
+}
+
+.cohort-action-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* Empty state */
+.cohort-empty {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--text-muted);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* Danger button variant */
+.designer-btn.danger {
+  background: var(--error);
+  color: #fff;
+  border-color: var(--error);
+}
+
+.designer-btn.danger:hover:not(:disabled) {
+  opacity: 0.88;
+}
+
+/* ── Designer Tab Bar ─────────────────────────────────────── */
+
+.designer-tab-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(34, 54, 48, 0.06);
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  padding: 4px;
+  margin-right: 8px;
+}
+
+.designer-tab-btn {
+  padding: 6px 18px;
+  border-radius: 99px;
+  border: none;
+  background: transparent;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.18s ease;
+  white-space: nowrap;
+}
+
+.designer-tab-btn:hover {
+  color: var(--graphite);
+  background: rgba(34, 54, 48, 0.07);
+}
+
+.designer-tab-btn.active {
+  background: var(--graphite);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(34, 54, 48, 0.22);
+}
+
+/* ── Cohort Panel (embedded in CertDesigner) ──────────────── */
+
+.cohort-panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 0 2rem 3rem;
+  max-width: 860px;
+  margin: 0 auto;
+  width: 100%;
+  animation: slideUp 0.2s ease;
+}
+
+.cohort-panel-toolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 0 0.5rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 0.25rem;
+}
+
+/* Delete overlay (inside CertDesigner, not full screen) */
+.cohort-delete-overlay {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1rem;
+}
+
+.cohort-delete-modal {
+  background: rgba(255,255,255,0.97);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  padding: 2rem;
+  max-width: 420px;
+  width: 100%;
+  box-shadow: var(--shadow);
+  animation: slideUp 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}

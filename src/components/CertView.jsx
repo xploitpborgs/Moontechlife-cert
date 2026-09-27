@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { APP_URL } from '../config';
 import CertificateRenderer from './CertificateRenderer';
-import {
-  createQrDataUrl,
-} from '../utils/certificateDesigner';
+import { createQrDataUrl } from '../utils/certificateDesigner';
+import { generateCertificateBlob } from '../utils/cert';
 
 function round(value, decimals = 2) {
   const factor = 10 ** decimals;
@@ -21,7 +20,7 @@ function formatIssuedDate(value) {
   });
 }
 
-function getDownloadFilename(fullName = '') {
+function getDownloadFilename(fullName = '', courseName = '') {
   const safeName = `${fullName || 'certificate'}`
     .trim()
     .replace(/[^a-z0-9\s-]/gi, '')
@@ -29,7 +28,14 @@ function getDownloadFilename(fullName = '') {
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '');
 
-  return `certificate-${safeName || 'download'}.png`;
+  const safeCourse = `${courseName || ''}`
+    .trim()
+    .replace(/[^a-z0-9\s-]/gi, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+
+  return `certificate-${safeCourse ? `${safeCourse}-` : ''}${safeName || 'download'}.png`;
 }
 
 function isLimitedDownloadBrowser() {
@@ -54,11 +60,22 @@ function triggerDownload(href, filename) {
   document.body.removeChild(anchor);
 }
 
-export default function CertView({ student, dataUrl, blob, isPublic, renderBundle }) {
+export default function CertView({ student: initialStudent, students = [], dataUrl: initialDataUrl, blob: initialBlob, isPublic, renderBundle: initialRenderBundle }) {
+  const [activeStudent, setActiveStudent] = useState(initialStudent);
+  const [activeDataUrl, setActiveDataUrl] = useState(initialDataUrl);
+  const [activeBlob, setActiveBlob] = useState(initialBlob);
+  const [activeRenderBundle, setActiveRenderBundle] = useState(initialRenderBundle);
+  const [switching, setSwitching] = useState(false);
+
   const [copied, setCopied] = useState(false);
   const [qrPreviewUrl, setQrPreviewUrl] = useState('');
   const [displaySize, setDisplaySize] = useState({ width: 0, height: 0 });
   const showDebug = new URLSearchParams(window.location.search).get('debug') === '1';
+
+  const student = activeStudent || initialStudent;
+  const dataUrl = activeDataUrl || initialDataUrl;
+  const blob = activeBlob || initialBlob;
+  const renderBundle = activeRenderBundle || initialRenderBundle;
 
   const appUrl = window.location.hostname === 'localhost'
     ? window.location.origin
@@ -76,6 +93,22 @@ export default function CertView({ student, dataUrl, blob, isPublic, renderBundl
         }]
       : [],
   };
+
+  async function handleSelectStudent(targetStudent) {
+    if (targetStudent.id === student.id || switching) return;
+    setSwitching(true);
+    try {
+      const { blob: nBlob, dataUrl: nDataUrl, renderBundle: nBundle } = await generateCertificateBlob(targetStudent);
+      setActiveStudent(targetStudent);
+      setActiveBlob(nBlob);
+      setActiveDataUrl(nDataUrl);
+      setActiveRenderBundle(nBundle);
+    } catch (err) {
+      console.error('Failed to switch certificate:', err);
+    } finally {
+      setSwitching(false);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -146,7 +179,7 @@ export default function CertView({ student, dataUrl, blob, isPublic, renderBundl
   }
 
   function handleDownload() {
-    const filename = getDownloadFilename(student.full_name);
+    const filename = getDownloadFilename(student.full_name, student.course_name_snapshot || student.course);
     const fallbackHref = dataUrl || '';
     const canUseBlob = blob instanceof Blob && blob.size > 0;
 
@@ -182,6 +215,34 @@ export default function CertView({ student, dataUrl, blob, isPublic, renderBundl
         <div className="cert-header">
           <div className="cert-congrats">Congratulations, {student.full_name} 🎉</div>
           <p className="cert-subtitle">Your certificate has been generated successfully.</p>
+        </div>
+      )}
+
+      {students && students.length > 1 && (
+        <div className="cert-switcher">
+          <div className="cert-switcher-header">
+            <span className="cert-switcher-icon">📜</span>
+            <span className="cert-switcher-label">You have {students.length} Earned Certificates</span>
+          </div>
+          <div className="cert-switcher-tabs">
+            {students.map((st) => {
+              const isSelected = st.id === student.id;
+              const cName = st.course_name_snapshot || st.course || 'Certificate';
+              const isChallenge = cName.toLowerCase().includes('100');
+              return (
+                <button
+                  key={st.id}
+                  type="button"
+                  className={`cert-tab-btn ${isSelected ? 'active' : ''}`}
+                  onClick={() => handleSelectStudent(st)}
+                  disabled={switching}
+                >
+                  <span className="cert-tab-badge-icon">{isChallenge ? '🏆' : '🎓'}</span>
+                  <span className="cert-tab-badge-text">{cName}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
 

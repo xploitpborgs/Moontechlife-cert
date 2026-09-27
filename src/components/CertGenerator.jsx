@@ -3,6 +3,7 @@ import supabase from '../supabase';
 import {
   fetchCourseOptions,
   fetchCertificateTemplateSettings,
+  getCertificateDescription,
   getDefaultSampleData,
   loadCertificateTemplate,
   resolveCoursePlaceholder,
@@ -38,7 +39,7 @@ export default function CertGenerator() {
   const [layout, setLayout] = useState(null);
   
   const [sampleData, setSampleData] = useState({
-    ...getDefaultSampleData(),
+    ...getDefaultSampleData('100day'),
     titleText: 'Director of Programs',
     signatureText: 'Jane Doe',
   });
@@ -127,6 +128,14 @@ export default function CertGenerator() {
     }
   }
 
+  function handleCohortTypeChange(newCohortType) {
+    setSampleData((current) => ({
+      ...current,
+      cohortType: newCohortType,
+      descriptionText: getCertificateDescription(current.selectedCourse, newCohortType),
+    }));
+  }
+
   useEffect(() => {
     if (authState.isAllowed) {
         loadTemplateData(templateId);
@@ -158,7 +167,7 @@ export default function CertGenerator() {
 
     const previewSampleData = {
       ...sampleData,
-      descriptionText: resolveCoursePlaceholder(sampleData.descriptionText, sampleData.selectedCourse),
+      descriptionText: resolveCoursePlaceholder(sampleData.descriptionText, sampleData.selectedCourse, '', sampleData.cohortType),
     };
 
     try {
@@ -194,7 +203,7 @@ export default function CertGenerator() {
 
   const previewSampleData = {
     ...sampleData,
-    descriptionText: resolveCoursePlaceholder(sampleData.descriptionText, sampleData.selectedCourse),
+    descriptionText: resolveCoursePlaceholder(sampleData.descriptionText, sampleData.selectedCourse, '', sampleData.cohortType),
   };
 
   return (
@@ -237,6 +246,17 @@ export default function CertGenerator() {
                 <label className="designer-control wide">
                   <span>Recipient Name</span>
                   <input type="text" value={sampleData.recipientName} onChange={(e) => handleTextInput('recipientName', e.target.value)} />
+                </label>
+
+                <label className="designer-control wide">
+                  <span>Cohort Type</span>
+                  <select
+                    value={sampleData.cohortType || '100day'}
+                    onChange={(e) => handleCohortTypeChange(e.target.value)}
+                  >
+                    <option value="100day">100-Day Tech Challenge</option>
+                    <option value="4week">4-Week Cohort</option>
+                  </select>
                 </label>
 
                 <label className="designer-control wide">

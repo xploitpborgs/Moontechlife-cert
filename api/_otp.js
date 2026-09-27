@@ -21,15 +21,20 @@ function isMissingColumnError(error, columnName) {
   return error?.code === '42703' || message.includes(columnName.toLowerCase());
 }
 
-async function fetchStudentByEmail(supabase, email) {
+async function fetchStudentsByEmail(supabase, email) {
   const { data, error } = await supabase
     .from('students')
     .select('*')
     .eq('email', email)
-    .limit(1);
+    .order('created_at', { ascending: false });
 
   if (error) throw error;
-  return data?.[0] || null;
+  return data || [];
+}
+
+async function fetchStudentByEmail(supabase, email) {
+  const list = await fetchStudentsByEmail(supabase, email);
+  return list[0] || null;
 }
 
 async function fetchCourseRecord(supabase, courseId) {
@@ -199,19 +204,21 @@ export async function requestOtpChallenge({ email, ip }) {
   const supabase = getPrivilegedSupabase();
 
   // Confirm the email exists in the DB before sending any OTP.
-  const student = await fetchStudentByEmail(supabase, normalizedEmail);
-  if (!student) {
+  const allStudents = await fetchStudentsByEmail(supabase, normalizedEmail);
+  if (!allStudents || allStudents.length === 0) {
     return buildNotFoundResponse();
   }
+  const student = allStudents[0];
 
-  // Fast-path: already verified with certificate generated
-  if (student.otp_verified && student.cert_generated_at) {
+  // Fast-path: already verified with certificate generated for all records
+  if (allStudents.every((s) => s.otp_verified && s.cert_generated_at)) {
     return {
       status: 200,
       body: {
         ok: true,
         alreadyVerified: true,
         student,
+        students: allStudents,
       },
     };
   }
@@ -375,34 +382,42 @@ export async function verifyOtpChallenge({ email, otp, ip }) {
   }
 
   // OWASP A01: Confirm student still exists in DB before granting access
-  const student = await fetchStudentByEmail(supabase, normalizedEmail);
-  if (!student) {
+  const allStudents = await fetchStudentsByEmail(supabase, normalizedEmail);
+  if (!allStudents || allStudents.length === 0) {
     return {
       status: 400,
       body: { error: 'Invalid or expired code. Please try again.' },
     };
   }
 
-  const courseContext = await resolveStudentCourseContext(supabase, student);
-  const verifiedAt = student.cert_generated_at || nowIso;
-  const verifiedUpdate = {
-    cert_generated_at: verifiedAt,
-    otp_verified: true,
-    otp_verified_at: nowIso,
-    otp_verified_by_email: normalizedEmail,
-    course_name_snapshot:
-      courseContext.courseName || student.course_name_snapshot || student.course || '',
-    facilitator_name_snapshot:
-      courseContext.facilitatorName || student.facilitator_name_snapshot || '',
-    facilitator_title_snapshot:
-      courseContext.facilitatorTitle || student.facilitator_title_snapshot || '',
-  };
+  const updatedStudents = [];
+  for (const st of allStudents) {
+    const courseContext = await resolveStudentCourseContext(supabase, st);
+    const verifiedAt = st.cert_generated_at || nowIso;
+    const verifiedUpdate = {
+      cert_generated_at: verifiedAt,
+      otp_verified: true,
+      otp_verified_at: nowIso,
+      otp_verified_by_email: normalizedEmail,
+      course_name_snapshot:
+        courseContext.courseName || st.course_name_snapshot || st.course || '',
+      facilitator_name_snapshot:
+        courseContext.facilitatorName || st.facilitator_name_snapshot || '',
+      facilitator_title_snapshot:
+        courseContext.facilitatorTitle || st.facilitator_title_snapshot || '',
+    };
 
-  const { error: updateStudentError } = await supabase
-    .from('students')
-    .update(verifiedUpdate)
-    .eq('id', student.id);
-  if (updateStudentError) throw updateStudentError;
+    const { error: updateStudentError } = await supabase
+      .from('students')
+      .update(verifiedUpdate)
+      .eq('id', st.id);
+    if (updateStudentError) throw updateStudentError;
+
+    updatedStudents.push({
+      ...st,
+      ...verifiedUpdate,
+    });
+  }
 
   const { error: markUsedError } = await supabase
     .from('otp_codes')
@@ -418,10 +433,8 @@ export async function verifyOtpChallenge({ email, otp, ip }) {
     status: 200,
     body: {
       ok: true,
-      student: {
-        ...student,
-        ...verifiedUpdate,
-      },
+      student: updatedStudents[0],
+      students: updatedStudents,
     },
   };
 }

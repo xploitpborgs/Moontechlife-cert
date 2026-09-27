@@ -26,3 +26,4 @@ supabase/migrations
 *.njsproj
 *.sln
 *.sw?
+supabase/.temp/

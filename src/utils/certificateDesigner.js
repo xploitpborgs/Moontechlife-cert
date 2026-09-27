@@ -339,12 +339,26 @@ export function buildVerificationUrl(token) {
   return `${getRuntimeAppUrl().replace(/\/$/, '')}/verify/${token}`;
 }
 
-export function getCertificateDescription(course) {
-  if (!course) {
-    return 'For successfully completing the learning activities during the 100 days tech challenge at MoonTech Life Community';
+/**
+ * Returns the certificate description text for a given course and cohort type.
+ * @param {string} course - The course/track name.
+ * @param {'100day'|'4week'} cohortType - Which programme the student completed.
+ */
+export function getCertificateDescription(course, cohortType = '100day') {
+  const is4Week = cohortType === '4week';
+
+  if (is4Week) {
+    if (!course) {
+      return 'In recognition of successfully completing the four-week Learning Track at MoonTech Life Community.';
+    }
+    return `In recognition of successfully completing the four-week {course} Learning Track at MoonTech Life Community.`;
   }
 
-  return `For successfully completing the learning activities for ${course} during the 100 days tech challenge at MoonTech Life Community`;
+  // Default: 100-Day Tech Challenge
+  if (!course) {
+    return 'In recognition of successfully completing the Learning Track as part of the 100-Day Tech Challenge at MoonTech Life Community.';
+  }
+  return 'In recognition of successfully completing the {course} Learning Track as part of the 100-Day Tech Challenge at MoonTech Life Community.';
 }
 
 export function normalizeDescriptionTemplate(text) {
@@ -354,16 +368,25 @@ export function normalizeDescriptionTemplate(text) {
   );
 }
 
-export function resolveCoursePlaceholder(text, course) {
-  const replacement = `${course || ''}`.trim() || 'the selected course';
-  return normalizeDescriptionTemplate(text).replace(/\{course\}/gi, replacement);
+export function resolveCoursePlaceholder(text, course, cohortName, cohortType) {
+  const courseReplacement = `${course || ''}`.trim() || 'the selected course';
+  
+  let cohortReplacement = `${cohortName || ''}`.trim();
+  if (!cohortReplacement) {
+    cohortReplacement = cohortType === '4week' ? '4-Week Cohort' : '100-Day Tech Challenge';
+  }
+
+  return normalizeDescriptionTemplate(text)
+    .replace(/\{course\}/gi, courseReplacement)
+    .replace(/\{cohort\}/gi, cohortReplacement);
 }
 
-export function getDefaultSampleData() {
+export function getDefaultSampleData(cohortType = '100day') {
   return {
     recipientName: 'Ada Lovelace',
     selectedCourse: '',
-    descriptionText: getCertificateDescription('Cybersecurity'),
+    cohortType,
+    descriptionText: getCertificateDescription('Cybersecurity', cohortType),
     verificationUrl: `${getRuntimeAppUrl().replace(/\/$/, '')}/verify/12345`,
   };
 }
@@ -381,15 +404,24 @@ export function resolveStudentCertificateDescription(student = {}, savedDefaultT
   for (const key of customDescriptionKeys) {
     const value = student?.[key];
     if (typeof value === 'string' && value.trim()) {
-      return resolveCoursePlaceholder(value.trim(), courseName || student?.course || '');
+      return resolveCoursePlaceholder(value.trim(), courseName || student?.course || '', student?.cohort_name || '', student?.cohort_type);
     }
   }
 
+  // If the designer saved a custom default text, use that (with placeholder resolved)
   if (typeof savedDefaultText === 'string' && savedDefaultText.trim()) {
-    return resolveCoursePlaceholder(savedDefaultText.trim(), courseName || student?.course || '');
+    return resolveCoursePlaceholder(savedDefaultText.trim(), courseName || student?.course || '', student?.cohort_name || '', student?.cohort_type);
   }
 
-  return getCertificateDescription(courseName || student?.course || '');
+  // Fall back to the cohort-aware default description
+  const cohortType = student?.cohort_type || '100day';
+  const effectiveCourse = courseName || student?.course || '';
+  return resolveCoursePlaceholder(
+    getCertificateDescription(effectiveCourse, cohortType),
+    effectiveCourse,
+    student?.cohort_name || '',
+    cohortType
+  );
 }
 
 export function buildCertificatePreviewData({
@@ -406,16 +438,137 @@ export function buildCertificatePreviewData({
   };
 }
 
-export function buildStudentCertificatePreviewData(student = {}, savedDefaultText = '', courseName = '') {
+export function buildStudentCertificatePreviewData(student = {}, savedDefaultText = '', courseName = '', cohortTemplate = '') {
   return buildCertificatePreviewData({
     recipientName: student.full_name || student.name || '',
     course: courseName || student.course || '',
     token: student.cert_token || '',
-    descriptionText: resolveStudentCertificateDescription(student, savedDefaultText, courseName),
+    descriptionText: resolveStudentCertificateDescription(student, savedDefaultText, courseName, cohortTemplate),
   });
 }
 
+// ---------------------------------------------------------------------------
+// Cohort data-access (CRUD against the `cohorts` table)
+// ---------------------------------------------------------------------------
+
+export const COHORTS_TABLE = 'cohorts';
+
+/**
+ * Fetch all cohorts ordered by sort_order then label.
+ * @returns {Promise<Array>}
+ */
+export async function fetchCohorts() {
+  const { data, error } = await supabase
+    .from(COHORTS_TABLE)
+    .select('id, slug, label, description_template, icon, sort_order, created_at, updated_at')
+    .order('sort_order', { ascending: true })
+    .order('label',      { ascending: true });
+
+  if (error) throw error;
+  return data || [];
+}
+
+/**
+ * Fetch a single cohort by its UUID.
+ * @param {string} id
+ * @returns {Promise<object|null>}
+ */
+export async function fetchCohortById(id) {
+  if (!id) return null;
+  const { data, error } = await supabase
+    .from(COHORTS_TABLE)
+    .select('*')
+    .eq('id', id)
+    .maybeSingle();
+  if (error) throw error;
+  return data || null;
+}
+
+/**
+ * Fetch a single cohort by its slug.
+ * @param {string} slug
+ * @returns {Promise<object|null>}
+ */
+export async function fetchCohortBySlug(slug) {
+  if (!slug) return null;
+  const { data, error } = await supabase
+    .from(COHORTS_TABLE)
+    .select('*')
+    .eq('slug', slug)
+    .maybeSingle();
+  if (error) throw error;
+  return data || null;
+}
+
+/**
+ * Create a new cohort.
+ * @param {{ slug: string, label: string, description_template: string, icon?: string, sort_order?: number }} payload
+ */
+export async function createCohort(payload) {
+  const { data, error } = await supabase
+    .from(COHORTS_TABLE)
+    .insert({
+      slug:                 payload.slug.trim().toLowerCase().replace(/\s+/g, '-'),
+      label:                payload.label.trim(),
+      description_template: payload.description_template.trim(),
+      icon:                 payload.icon?.trim() || '🎓',
+      sort_order:           payload.sort_order ?? 0,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * Update an existing cohort by ID.
+ * @param {string} id
+ * @param {Partial<{ label: string, description_template: string, icon: string, sort_order: number }>} payload
+ */
+export async function updateCohort(id, payload) {
+  const patch = {};
+  if (payload.label               !== undefined) patch.label               = payload.label.trim();
+  if (payload.description_template !== undefined) patch.description_template = payload.description_template.trim();
+  if (payload.icon                !== undefined) patch.icon                = payload.icon.trim() || '🎓';
+  if (payload.sort_order          !== undefined) patch.sort_order          = payload.sort_order;
+
+  const { data, error } = await supabase
+    .from(COHORTS_TABLE)
+    .update(patch)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * Delete a cohort by ID. Will fail if students still reference it.
+ * @param {string} id
+ */
+export async function deleteCohort(id) {
+  const { error } = await supabase
+    .from(COHORTS_TABLE)
+    .delete()
+    .eq('id', id);
+  if (error) throw error;
+}
+
+/**
+ * Resolve the description for a student, preferring the cohort's
+ * description_template from the DB over the hardcoded fallback.
+ * @param {object} student
+ * @param {string} cohortTemplate - description_template from the cohorts table
+ * @param {string} courseName
+ * @returns {string}
+ */
+export function resolveCohortDescription(cohortTemplate, courseName, cohortName, cohortType) {
+  if (!cohortTemplate) return resolveCoursePlaceholder(getCertificateDescription(courseName, cohortType), courseName, cohortName, cohortType);
+  return resolveCoursePlaceholder(cohortTemplate, courseName, cohortName, cohortType);
+}
+
 export async function fetchCourseOptions() {
+
   const { data, error } = await supabase
     .from('students')
     .select('course')
